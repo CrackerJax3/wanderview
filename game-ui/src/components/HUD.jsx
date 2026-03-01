@@ -69,19 +69,36 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
   const [landmarks, setLandmarks] = useState([]);
   const [showMinimap, setShowMinimap] = useState(true);
   const [tilesLoaded, setTilesLoaded] = useState(0);
-  const [viewLevel, setViewLevel] = useState('street');
+  const [viewHeight, setViewHeight] = useState(1.6);
   const canvasRef = useRef(null);
   const heading = position?.heading || 0;
 
-  const VIEW_LEVELS = [
-    { id: 'sky', label: 'Sky View', icon: '\u2708\uFE0F', height: 150 },
-    { id: 'elevated', label: 'Elevated', icon: '\uD83C\uDFD9\uFE0F', height: 25 },
-    { id: 'street', label: 'Street', icon: '\uD83D\uDEB6', height: 1.6 },
+  const HEIGHT_MIN = 0.5;
+  const HEIGHT_MAX = 200;
+  const HEIGHT_MARKS = [
+    { label: 'Street', height: 1.6 },
+    { label: 'Elevated', height: 25 },
+    { label: 'Sky View', height: 150 },
   ];
 
-  const handleViewLevel = useCallback((level) => {
-    setViewLevel(level.id);
-    window.dispatchEvent(new CustomEvent('setViewHeight', { detail: { height: level.height } }));
+  const heightToSlider = useCallback((h) => {
+    return ((Math.log(h) - Math.log(HEIGHT_MIN)) / (Math.log(HEIGHT_MAX) - Math.log(HEIGHT_MIN))) * 100;
+  }, []);
+
+  const sliderToHeight = useCallback((v) => {
+    return Math.exp((v / 100) * (Math.log(HEIGHT_MAX) - Math.log(HEIGHT_MIN)) + Math.log(HEIGHT_MIN));
+  }, []);
+
+  const handleHeightSlider = useCallback((e) => {
+    const val = parseFloat(e.target.value);
+    const h = sliderToHeight(val);
+    setViewHeight(h);
+    window.dispatchEvent(new CustomEvent('setViewHeight', { detail: { height: h } }));
+  }, [sliderToHeight]);
+
+  const handleHeightMark = useCallback((h) => {
+    setViewHeight(h);
+    window.dispatchEvent(new CustomEvent('setViewHeight', { detail: { height: h } }));
   }, []);
 
   useEffect(() => {
@@ -211,19 +228,33 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
         <div className="compass-heading">{compassDirection} {Math.round(heading)}°</div>
       </div>
 
-      {/* View Level — left side */}
-      <div className="view-level-menu">
-        {VIEW_LEVELS.map((level) => (
-          <button
-            key={level.id}
-            className={`view-level-btn interactive ${viewLevel === level.id ? 'active' : ''}`}
-            onClick={() => handleViewLevel(level)}
-            title={level.label}
-          >
-            <span className="view-level-icon">{level.icon}</span>
-            <span className="view-level-label">{level.label}</span>
-          </button>
-        ))}
+      {/* Height Slider — left side */}
+      <div className="height-slider-wrapper interactive">
+        <div className="height-slider-track">
+          <input
+            type="range"
+            className="height-slider"
+            min="0"
+            max="100"
+            step="0.5"
+            value={heightToSlider(viewHeight)}
+            onChange={handleHeightSlider}
+            orient="vertical"
+          />
+          <div className="height-marks">
+            {HEIGHT_MARKS.map((mark) => (
+              <button
+                key={mark.label}
+                className="height-mark interactive"
+                style={{ bottom: `${heightToSlider(mark.height)}%` }}
+                onClick={() => handleHeightMark(mark.height)}
+                title={mark.label}
+              >
+                {mark.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Location Info — bottom left (with colored distance badges) */}

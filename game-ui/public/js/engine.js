@@ -65,6 +65,16 @@
     }
   });
 
+  // Override fullscreen to use document.body so the HUD stays visible
+  document.addEventListener('fullscreenchange', function () {
+    // If A-Frame fullscreened just the canvas, exit and re-fullscreen the body
+    if (document.fullscreenElement && document.fullscreenElement.tagName === 'CANVAS') {
+      document.exitFullscreen().then(function () {
+        document.body.requestFullscreen().catch(function () {});
+      });
+    }
+  });
+
   // Keyboard shortcuts (safe to register on document immediately)
   document.addEventListener('keydown', function (e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
