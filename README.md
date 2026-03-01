@@ -1,5 +1,7 @@
-# WanderView
+Try it yourself!
+https://wanderview-nine.vercel.app/
 
+# WanderView
 First-person walking game exploring **Hell's Kitchen, NYC** with AI narration, missions, and real-world 3D tiles.
 
 ## Features
