@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 
 const SV_STATIC = 'https://maps.googleapis.com/maps/api/streetview';
+const SV_META = 'https://maps.googleapis.com/maps/api/streetview/metadata';
 const H_SLICES = 6;
 const H_FOV = 60;
 const IMG_SIZE = 640;
@@ -11,6 +12,8 @@ const STEP_METERS = 12;
 const MOVE_COOLDOWN_MS = 400;
 const DRIFT_SPEED = 40;
 const DRIFT_MAX = 35;
+const CAMERA_FOV = 60;
+const SNAP_RADIUS = 50;
 
 function buildPanorama(lat, lng, apiKey) {
   return new Promise((resolve) => {
@@ -33,7 +36,7 @@ function buildPanorama(lat, lng, apiKey) {
         const heading = i * H_FOV;
         const img = new Image();
         img.crossOrigin = 'anonymous';
-        img.src = `${SV_STATIC}?size=${IMG_SIZE}x${IMG_SIZE}&location=${lat},${lng}&heading=${heading}&pitch=${pitch}&fov=${H_FOV}&key=${apiKey}`;
+        img.src = `${SV_STATIC}?size=${IMG_SIZE}x${IMG_SIZE}&location=${lat},${lng}&heading=${heading}&pitch=${pitch}&fov=${H_FOV}&source=outdoor&key=${apiKey}`;
         const x = i * IMG_SIZE;
         const y = bandY;
         img.onload = () => {
@@ -53,6 +56,21 @@ function moveLatLng(lat, lng, headingDeg, meters) {
   const dLat = (meters * Math.cos(rad)) / 111320;
   const dLng = (meters * Math.sin(rad)) / (111320 * Math.cos((lat * Math.PI) / 180));
   return { lat: lat + dLat, lng: lng + dLng };
+}
+
+async function snapToStreet(lat, lng, apiKey) {
+  try {
+    const res = await fetch(
+      `${SV_META}?location=${lat},${lng}&source=outdoor&radius=${SNAP_RADIUS}&key=${apiKey}`
+    );
+    const data = await res.json();
+    if (data.status === 'OK' && data.location) {
+      return { lat: data.location.lat, lng: data.location.lng };
+    }
+  } catch (e) {
+    console.warn('[StreetView] Metadata lookup failed:', e.message);
+  }
+  return null;
 }
 
 export default function StreetViewOverlay({ position, active }) {
@@ -95,7 +113,7 @@ export default function StreetViewOverlay({ position, active }) {
     window._streetViewRenderer = renderer;
 
     s.scene = new THREE.Scene();
-    s.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
+    s.camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, 1, 1100);
     window._streetViewCamera = s.camera;
 
     const geo = new THREE.SphereGeometry(500, 60, 40);
@@ -114,7 +132,16 @@ export default function StreetViewOverlay({ position, active }) {
     setLoading(true);
 
     try {
-      const panoCanvas = await buildPanorama(lat.toFixed(5), lng.toFixed(5), apiKey);
+      const snapped = await snapToStreet(lat, lng, apiKey);
+      if (!snapped) {
+        s.loading = false;
+        setLoading(false);
+        return;
+      }
+      const useLat = snapped.lat;
+      const useLng = snapped.lng;
+
+      const panoCanvas = await buildPanorama(useLat.toFixed(5), useLng.toFixed(5), apiKey);
       const THREE = window.THREE;
       const texture = new THREE.CanvasTexture(panoCanvas);
       if (THREE.SRGBColorSpace) texture.colorSpace = THREE.SRGBColorSpace;
@@ -124,21 +151,21 @@ export default function StreetViewOverlay({ position, active }) {
         s.mesh.material = new THREE.MeshBasicMaterial({ map: texture });
       }
 
-      s.currentLat = lat;
-      s.currentLng = lng;
+      s.currentLat = useLat;
+      s.currentLng = useLng;
       s.driftX = 0;
       s.driftZ = 0;
       s.camera.position.set(0, 0, 0);
-      locKeyRef.current = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+      locKeyRef.current = `${useLat.toFixed(4)},${useLng.toFixed(4)}`;
 
       if (window.gameEngine) {
-        const scene = window.gameEngine.latLngToScene(lat, lng);
+        const scene = window.gameEngine.latLngToScene(useLat, useLng);
         const rig = document.getElementById('player-rig');
         if (rig) {
           const curY = rig.object3D.position.y;
           rig.object3D.position.set(scene.x, curY, scene.z);
         }
-        window.gameEngine.updatePosition(lat, lng, s.lon);
+        window.gameEngine.updatePosition(useLat, useLng, s.lon);
       }
     } catch (err) {
       console.error('[StreetView] Move error:', err);
@@ -259,7 +286,16 @@ export default function StreetViewOverlay({ position, active }) {
     let cancelled = false;
     (async () => {
       try {
-        const panoCanvas = await buildPanorama(lat.toFixed(5), lng.toFixed(5), apiKey);
+        const snapped = await snapToStreet(lat, lng, apiKey);
+        const useLat = snapped ? snapped.lat : lat;
+        const useLng = snapped ? snapped.lng : lng;
+        if (snapped) {
+          s.currentLat = useLat;
+          s.currentLng = useLng;
+          locKeyRef.current = `${useLat.toFixed(4)},${useLng.toFixed(4)}`;
+        }
+
+        const panoCanvas = await buildPanorama(useLat.toFixed(5), useLng.toFixed(5), apiKey);
         if (cancelled) return;
 
         const THREE = window.THREE;
