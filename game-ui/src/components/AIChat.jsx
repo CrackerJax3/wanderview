@@ -1,14 +1,47 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { callMistral } from '../services/mistral';
+import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
+import { callMistral, callMistralVision } from '../services/mistral';
 import { getNearbyPlaces } from '../services/places';
 
-export default function AIChat({ position, gameMode, mission }) {
+const AIChat = forwardRef(function AIChat({ position, gameMode, mission }, ref) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [expanded, setExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  const sendAnalysis = useCallback(async (imageDataUrl) => {
+    setExpanded(true);
+    setMessages((prev) => [...prev, { role: 'user', text: 'Analyze this area', image: imageDataUrl }]);
+    setIsLoading(true);
+
+    try {
+      const places = await getNearbyPlaces(
+        position?.lat || 40.7608,
+        position?.lng || -73.9941
+      );
+
+      const reply = await callMistralVision(imageDataUrl, {
+        lat: position?.lat || 40.7608,
+        lng: position?.lng || -73.9941,
+        heading: position?.heading || 0,
+        places,
+        gameMode,
+        mission,
+      });
+
+      setMessages((prev) => [...prev, { role: 'ai', text: reply }]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'ai', text: "Sorry, I couldn't analyze that area. Try again." },
+      ]);
+    }
+
+    setIsLoading(false);
+  }, [position, gameMode, mission]);
+
+  useImperativeHandle(ref, () => ({ sendAnalysis }), [sendAnalysis]);
 
   // Toggle chat with Tab key
   useEffect(() => {
@@ -97,6 +130,9 @@ export default function AIChat({ position, gameMode, mission }) {
             )}
             {messages.map((msg, i) => (
               <div key={i} className={`chat-message ${msg.role}`}>
+                {msg.image && (
+                  <img src={msg.image} alt="Screen capture" className="chat-capture-img" />
+                )}
                 {msg.text}
               </div>
             ))}
@@ -131,4 +167,6 @@ export default function AIChat({ position, gameMode, mission }) {
       </div>
     </div>
   );
-}
+});
+
+export default AIChat;

@@ -7,7 +7,7 @@ function formatDistance(meters) {
   return `${Math.round(meters)}m`;
 }
 
-export default function HUD({ position, gameMode, score }) {
+export default function HUD({ position, gameMode, score, onAnalyze }) {
   const [street, setStreet] = useState({ street: '46th St', avenue: '9th Ave' });
   const [heading, setHeading] = useState(0);
   const [landmarks, setLandmarks] = useState([]);
@@ -164,6 +164,9 @@ export default function HUD({ position, gameMode, score }) {
           </div>
         </div>
         <div className="compass-heading">{compassDirection} {Math.round(heading)}°</div>
+        <button className="analyzer-btn interactive" onClick={onAnalyze}>
+          Analyzer
+        </button>
       </div>
 
       {/* Location Info — bottom left (with colored distance badges) */}

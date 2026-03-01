@@ -49,6 +49,66 @@ export function clearHistory() {
   conversationHistory = [];
 }
 
+export async function callMistralVision(imageDataUrl, context = {}) {
+  if (!apiKey) {
+    return 'I can see the area you selected — looks like a typical Hell\'s Kitchen block! Enable the Mistral API key for detailed AI analysis.';
+  }
+
+  const { lat, lng, heading, places, gameMode, mission } = context;
+  const modePrompt = GAME_MODE_PROMPTS[gameMode] || GAME_MODE_PROMPTS.explorer;
+
+  const contextText = `[CONTEXT]
+Player position: ${lat?.toFixed(6)}, ${lng?.toFixed(6)}, heading ${heading?.toFixed(0)}°
+${places ? `Nearby places: ${JSON.stringify(places.slice(0, 5))}` : ''}
+${mission ? `Current mission: ${JSON.stringify(mission)}` : ''}
+${modePrompt}
+
+The player used the Analyzer tool to capture a screenshot of something in the 3D scene. Describe what you see in the image and relate it to the Hell's Kitchen neighborhood. Be specific, fun, and in-character as a NYC tour guide. Keep it to 2-4 sentences.`;
+
+  try {
+    const response = await fetch(MISTRAL_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'pixtral-large-latest',
+        messages: [
+          { role: 'system', content: GAME_MASTER_SYSTEM_PROMPT },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: contextText },
+              { type: 'image_url', image_url: { url: imageDataUrl } },
+            ],
+          },
+        ],
+        max_tokens: 300,
+        temperature: 0.8,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Mistral Vision API error:', response.status, await response.text());
+      return 'Hmm, I couldn\'t get a good look at that. The game master\'s glasses are foggy. Try again!';
+    }
+
+    const data = await response.json();
+    const reply = data.choices[0]?.message?.content || 'The game master squints but can\'t make it out...';
+
+    conversationHistory.push(
+      { role: 'user', content: '[Player used Analyzer tool to capture a screenshot]' },
+      { role: 'assistant', content: reply }
+    );
+
+    return reply;
+  } catch (err) {
+    console.error('Mistral Vision call failed:', err);
+    return 'Sorry, the analyzer is on the fritz. Give it another shot!';
+  }
+}
+
 export async function callMistral(userMessage, context = {}) {
   if (!apiKey) {
     return getMockResponse(userMessage, context);

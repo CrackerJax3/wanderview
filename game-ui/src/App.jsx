@@ -4,6 +4,7 @@ import HUD from './components/HUD';
 import MissionPanel from './components/MissionPanel';
 import AIChat from './components/AIChat';
 import ModeSelector from './components/ModeSelector';
+import ScreenAnalyzer from './components/ScreenAnalyzer';
 import { setApiKey as setMistralApiKey, getNarration, generateMission, hasApiKey as hasMistralKey } from './services/mistral';
 import { setApiKey as setPlacesApiKey, getNearbyPlaces } from './services/places';
 
@@ -28,8 +29,10 @@ export default function App() {
   const [mission, setMission] = useState(null);
   const [score, setScore] = useState(0);
   const [showControls, setShowControls] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
   const lastNarrationPos = useRef({ lat: 0, lng: 0 });
   const narrationTimer = useRef(null);
+  const chatRef = useRef(null);
 
   // Listen for position changes from game engine
   useEffect(() => {
@@ -154,6 +157,7 @@ export default function App() {
             position={position}
             gameMode={gameMode}
             score={score}
+            onAnalyze={() => setAnalyzing(true)}
           />
 
           <MissionPanel
@@ -163,9 +167,19 @@ export default function App() {
           />
 
           <AIChat
+            ref={chatRef}
             position={position}
             gameMode={gameMode}
             mission={mission}
+          />
+
+          <ScreenAnalyzer
+            active={analyzing}
+            onCapture={(dataUrl) => {
+              setAnalyzing(false);
+              chatRef.current?.sendAnalysis(dataUrl);
+            }}
+            onCancel={() => setAnalyzing(false)}
           />
 
           {showControls && (
