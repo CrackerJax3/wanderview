@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
-import { callMistral, callMistralVision, parseScheduleFromResponse } from '../services/mistral';
+import { callMistral, callMistralVision, callMistralSchedule, isScheduleRequest, parseScheduleFromResponse } from '../services/mistral';
 import { getNearbyPlaces } from '../services/places';
 
 const AIChat = forwardRef(function AIChat({ position, gameMode, mission, onScheduleUpdate }, ref) {
@@ -91,18 +91,31 @@ const AIChat = forwardRef(function AIChat({ position, gameMode, mission, onSched
         position?.lng || -73.9941
       );
 
-      const rawReply = await callMistral(userMsg, {
+      const context = {
         lat: position?.lat || 40.7608,
         lng: position?.lng || -73.9941,
         heading: position?.heading || 0,
         places,
         gameMode,
         mission,
-      });
+      };
 
-      const { message: reply, schedule } = parseScheduleFromResponse(rawReply);
+      let reply;
+      let schedule = null;
+
+      if (isScheduleRequest(userMsg)) {
+        const result = await callMistralSchedule(userMsg, context);
+        reply = result.message || 'Here\'s your plan. Check the schedule on the right.';
+        schedule = result.schedule;
+      } else {
+        const rawReply = await callMistral(userMsg, context);
+        const parsed = parseScheduleFromResponse(rawReply);
+        reply = parsed.message;
+        schedule = parsed.schedule;
+      }
+
       setMessages((prev) => [...prev, { role: 'ai', text: reply }]);
-      if (schedule && onScheduleUpdate) {
+      if (schedule && schedule.length > 0 && onScheduleUpdate) {
         onScheduleUpdate(schedule);
       }
     } catch (err) {

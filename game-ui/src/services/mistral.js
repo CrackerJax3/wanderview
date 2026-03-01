@@ -226,6 +226,82 @@ ${modePrompt}`;
   }
 }
 
+const SCHEDULE_SYSTEM_PROMPT = `You are a NYC tour guide helping plan a day in Hell's Kitchen / Manhattan. The user will ask you to plan their day, possibly with specific places and times (e.g. "visit X at 9am, Y at 3pm").
+
+You MUST reply with exactly two parts in this order:
+1. A short conversational line (1-2 sentences) confirming the plan.
+2. A schedule block: the exact text [SCHEDULE] then a JSON array, then [/SCHEDULE].
+
+JSON array format: each object has "time" (e.g. "9:00 AM"), "title", "location", "status" ("confirmed" for user-requested items, "suggested" for your fill-in ideas), and optional "lat", "lng" (numbers). Use real NYC/Hell's Kitchen places. Fill gaps between the user's requested times with your own suggestions (status: "suggested"). Example:
+[SCHEDULE]
+[{"time":"9:00 AM","title":"Visit Times Square","location":"Times Square, 42nd St","status":"confirmed","lat":40.758,"lng":-73.9855},{"time":"10:30 AM","title":"Coffee at Gotham West","location":"Gotham West Market","status":"suggested","lat":40.7635,"lng":-73.9928}]
+[/SCHEDULE]
+
+Always include the [SCHEDULE]...[/SCHEDULE] block when the user asks for a plan, schedule, or itinerary.`;
+
+export async function callMistralSchedule(userMessage, context = {}) {
+  if (!apiKey) {
+    return { message: 'Set your Mistral API key to get a day plan.', schedule: null };
+  }
+
+  const { lat, lng, places } = context;
+
+  const contextLine = `Player position: ${lat?.toFixed(6)}, ${lng?.toFixed(6)}. ${places && places.length ? `Nearby: ${JSON.stringify(places.slice(0, 6))}` : ''}`;
+
+  try {
+    const response = await fetch(MISTRAL_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'mistral-large-latest',
+        messages: [
+          { role: 'system', content: SCHEDULE_SYSTEM_PROMPT },
+          { role: 'user', content: `${contextLine}\n\nUser request: ${userMessage}` },
+        ],
+        max_tokens: 1024,
+        temperature: 0.6,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('Mistral Schedule API error:', response.status, errText);
+      return { message: "I couldn't build a schedule right now. Try again.", schedule: null };
+    }
+
+    const data = await response.json();
+    const raw = data.choices[0]?.message?.content || '';
+
+    const parsed = parseScheduleFromResponse(raw);
+    if (parsed.schedule) {
+      conversationHistory.push(
+        { role: 'user', content: `[Schedule request] ${userMessage}` },
+        { role: 'assistant', content: raw }
+      );
+    }
+    return parsed;
+  } catch (err) {
+    console.error('Mistral Schedule call failed:', err);
+    return { message: "Schedule request failed. Try again.", schedule: null };
+  }
+}
+
+export function isScheduleRequest(message) {
+  if (!message || typeof message !== 'string') return false;
+  const t = message.toLowerCase().trim();
+  return (
+    /\bplan\s+(my\s+)?day\b/.test(t) ||
+    /\bplan\s+the\s+day\b/.test(t) ||
+    /\bschedule\b/.test(t) ||
+    /\bitinerary\b/.test(t) ||
+    /\bplan\s+.*\d+\s*(am|pm)/.test(t) ||
+    /\b(visit|go to|see)\s+.*\s+at\s+\d+/.test(t)
+  );
+}
+
 export async function getNarration(context = {}) {
   const { lat, lng, heading, places, gameMode } = context;
 

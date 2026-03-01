@@ -213,19 +213,21 @@
   text-align: center;
 }
 
-/* ─── Right Sidebar — stacks mission + schedule ─── */
+/* ─── Right Sidebar — stacks schedule + mission (right side HUD) ─── */
 .right-sidebar {
   position: fixed;
-  top: 115px;
+  top: 100px;
   right: 20px;
-  width: 260px;
-  z-index: 1010;
+  width: 280px;
+  min-height: 140px;
+  z-index: 1015;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: calc(100vh - 200px);
+  max-height: calc(100vh - 220px);
   overflow-y: auto;
   overflow-x: hidden;
+  pointer-events: auto;
 }
 
 .right-sidebar::-webkit-scrollbar {
@@ -1086,6 +1088,8 @@
 /* ─── Schedule Panel ─── */
 .schedule-panel {
   width: 100%;
+  min-height: 100px;
+  flex-shrink: 0;
   animation: slideUp 0.3s ease;
 }
 

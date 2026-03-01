@@ -189,17 +189,17 @@ export default function App() {
           />
 
           <div className="right-sidebar">
-            <MissionPanel
-              mission={mission}
-              position={position}
-              onComplete={handleMissionComplete}
-            />
-
             <SchedulePanel
               items={schedule}
               onAccept={handleScheduleAccept}
               onDecline={handleScheduleDecline}
               onClear={handleScheduleClear}
+            />
+
+            <MissionPanel
+              mission={mission}
+              position={position}
+              onComplete={handleMissionComplete}
             />
           </div>
 
