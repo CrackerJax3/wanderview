@@ -303,6 +303,11 @@ export default function StreetViewOverlay({ position, active }) {
 
     const onKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        e.preventDefault();
+        return;
+      }
       const map = { w: 'w', arrowup: 'w', s: 's', arrowdown: 's', a: 'a', arrowleft: 'a', d: 'd', arrowright: 'd' };
       const k = map[e.key.toLowerCase()];
       if (k) { e.preventDefault(); s.keys[k] = true; }
@@ -324,14 +329,14 @@ export default function StreetViewOverlay({ position, active }) {
     const el = containerRef.current;
     if (el) el.addEventListener('click', onClick);
     document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keydown', onKeyDown, true);
     document.addEventListener('keyup', onKeyUp);
     window.addEventListener('resize', onResize);
 
     return () => {
       if (el) el.removeEventListener('click', onClick);
       document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keydown', onKeyDown, true);
       document.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('resize', onResize);
       if (document.pointerLockElement) document.exitPointerLock();

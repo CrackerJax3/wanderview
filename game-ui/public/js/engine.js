@@ -85,7 +85,7 @@
       e.preventDefault();
       window.dispatchEvent(new CustomEvent('toggleChat'));
     }
-    if (e.key === 'Escape') {
+    if (e.key === 'Escape' && !window._streetViewActive) {
       window.dispatchEvent(new CustomEvent('closeOverlays'));
     }
   });
