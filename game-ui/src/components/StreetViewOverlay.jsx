@@ -285,7 +285,9 @@ export default function StreetViewOverlay({ position, active }) {
 
     const onClick = () => {
       const canvas = s.renderer?.domElement;
-      if (canvas && !document.pointerLockElement) {
+      if (document.pointerLockElement === canvas) {
+        document.exitPointerLock();
+      } else if (canvas) {
         canvas.requestPointerLock();
       }
     };
