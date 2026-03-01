@@ -73,7 +73,7 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
   const canvasRef = useRef(null);
   const heading = position?.heading || 0;
 
-  const HEIGHT_MIN = 0.3;
+  const HEIGHT_MIN = -15.3;
   const HEIGHT_MAX = 80;
   const HEIGHT_MARKS = [
     { label: 'Street', height: 1.6 },
