@@ -175,9 +175,9 @@ export default function App() {
 
           <ScreenAnalyzer
             active={analyzing}
-            onCapture={(dataUrl) => {
+            onCapture={(dataUrl, coords) => {
               setAnalyzing(false);
-              chatRef.current?.sendAnalysis(dataUrl);
+              chatRef.current?.sendAnalysis(dataUrl, coords);
             }}
             onCancel={() => setAnalyzing(false)}
           />

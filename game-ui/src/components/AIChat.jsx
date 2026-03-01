@@ -10,20 +10,25 @@ const AIChat = forwardRef(function AIChat({ position, gameMode, mission }, ref) 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  const sendAnalysis = useCallback(async (imageDataUrl) => {
+  const sendAnalysis = useCallback(async (imageDataUrl, coords) => {
+    const targetLat = coords?.lat || position?.lat || 40.7608;
+    const targetLng = coords?.lng || position?.lng || -73.9941;
+    const coordLabel = `${targetLat.toFixed(4)}, ${targetLng.toFixed(4)}`;
+
     setExpanded(true);
-    setMessages((prev) => [...prev, { role: 'user', text: 'Analyze this area', image: imageDataUrl }]);
+    setMessages((prev) => [...prev, {
+      role: 'user',
+      text: `Analyze this area (${coordLabel})`,
+      image: imageDataUrl,
+    }]);
     setIsLoading(true);
 
     try {
-      const places = await getNearbyPlaces(
-        position?.lat || 40.7608,
-        position?.lng || -73.9941
-      );
+      const places = await getNearbyPlaces(targetLat, targetLng);
 
       const reply = await callMistralVision(imageDataUrl, {
-        lat: position?.lat || 40.7608,
-        lng: position?.lng || -73.9941,
+        lat: targetLat,
+        lng: targetLng,
         heading: position?.heading || 0,
         places,
         gameMode,

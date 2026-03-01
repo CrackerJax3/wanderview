@@ -107,7 +107,32 @@ export default function ScreenAnalyzer({ active, onCapture, onCancel }) {
 
     ctx.putImageData(imageData, 0, 0);
     const dataUrl = tempCanvas.toDataURL('image/png');
-    onCapture(dataUrl);
+
+    // Raycast from center of the selection box to get 3D world coords
+    let coords = null;
+    try {
+      const centerX = (rect.x + rect.width / 2) / window.innerWidth * 2 - 1;
+      const centerY = -((rect.y + rect.height / 2) / window.innerHeight * 2 - 1);
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera({ x: centerX, y: centerY }, sceneEl.camera);
+
+      const intersects = raycaster.intersectObjects(sceneEl.object3D.children, true);
+      if (intersects.length > 0 && window.gameEngine) {
+        const point = intersects[0].point;
+        const latLng = window.gameEngine.sceneToLatLng(point.x, point.z);
+        coords = { lat: latLng.lat, lng: latLng.lng };
+      }
+    } catch (e) {
+      console.warn('[Analyzer] Raycast failed:', e.message);
+    }
+
+    // Fall back to player position if raycast missed
+    if (!coords && window.gameEngine) {
+      coords = window.gameEngine.getPosition();
+    }
+
+    onCapture(dataUrl, coords);
   }, [onCapture, onCancel]);
 
   if (!active) return null;
