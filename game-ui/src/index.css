@@ -1139,6 +1139,24 @@
   border-radius: 2px;
 }
 
+.schedule-empty {
+  padding: 16px;
+  text-align: center;
+}
+
+.schedule-empty p {
+  font-size: 0.78rem;
+  color: var(--gray-500);
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+
+.schedule-empty-hint {
+  font-size: 0.7rem !important;
+  color: var(--gray-400) !important;
+  font-style: italic;
+}
+
 .schedule-items {
   padding: 8px 0;
 }
