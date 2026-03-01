@@ -70,7 +70,7 @@ function drawPlayerArrow(ctx, cx, cy, headingDeg) {
   ctx.restore();
 }
 
-export default function HUD({ position, gameMode, score, onAnalyze }) {
+export default function HUD({ position, gameMode, score, onAnalyze }) {n
   const [street, setStreet] = useState({ street: '46th St', avenue: '9th Ave' });
   const [landmarks, setLandmarks] = useState([]);
   const [showMinimap, setShowMinimap] = useState(true);
