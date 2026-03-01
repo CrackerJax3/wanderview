@@ -237,11 +237,15 @@ export default function StreetViewOverlay({ position, active }) {
     if (document.pointerLockElement) document.exitPointerLock();
 
     const s = stateRef.current;
-    s.lon = position.heading || 0;
-    s.lat = 0;
+    const isFirstLoad = !locKeyRef.current;
     s.currentLat = lat;
     s.currentLng = lng;
-    s.keys = { w: false, a: false, s: false, d: false };
+
+    if (isFirstLoad) {
+      s.lon = position.heading || 0;
+      s.lat = 0;
+      s.keys = { w: false, a: false, s: false, d: false };
+    }
 
     if (locKey === locKeyRef.current) {
       startRenderLoop();
