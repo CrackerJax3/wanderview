@@ -98,7 +98,7 @@ AFRAME.registerComponent('wasd-movement', {
     this.direction = new THREE.Vector3();
     this.keys = { w: false, a: false, s: false, d: false, shift: false, space: false, q: false, e: false };
     this.headBobTime = 0;
-    this.baseY = 1.6;
+    this.baseY = -15;
     this.isMoving = false;
     this.baseFov = 75;
     this.currentFov = 75;
@@ -165,7 +165,7 @@ AFRAME.registerComponent('wasd-movement', {
       let vertSpeed = this.data.speed;
       if (this.keys.shift) vertSpeed *= this.data.sprintMultiplier;
       this.baseY += moveY * vertSpeed * dt;
-      this.baseY = Math.max(0.5, this.baseY);
+      this.baseY = Math.max(-30, this.baseY);
     }
 
     // Calculate movement direction

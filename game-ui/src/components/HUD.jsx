@@ -69,24 +69,24 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
   const [landmarks, setLandmarks] = useState([]);
   const [showMinimap, setShowMinimap] = useState(true);
   const [tilesLoaded, setTilesLoaded] = useState(0);
-  const [viewHeight, setViewHeight] = useState(1.6);
+  const [viewHeight, setViewHeight] = useState(-15);
   const canvasRef = useRef(null);
   const heading = position?.heading || 0;
 
-  const HEIGHT_MIN = -15.3;
+  const HEIGHT_MIN = -30;
   const HEIGHT_MAX = 80;
   const HEIGHT_MARKS = [
-    { label: 'Street', height: 1.6 },
+    { label: 'Street', height: -15 },
     { label: 'Elevated', height: 10 },
     { label: 'Sky View', height: 60 },
   ];
 
   const heightToSlider = useCallback((h) => {
-    return ((Math.log(h) - Math.log(HEIGHT_MIN)) / (Math.log(HEIGHT_MAX) - Math.log(HEIGHT_MIN))) * 100;
+    return ((h - HEIGHT_MIN) / (HEIGHT_MAX - HEIGHT_MIN)) * 100;
   }, []);
 
   const sliderToHeight = useCallback((v) => {
-    return Math.exp((v / 100) * (Math.log(HEIGHT_MAX) - Math.log(HEIGHT_MIN)) + Math.log(HEIGHT_MIN));
+    return (v / 100) * (HEIGHT_MAX - HEIGHT_MIN) + HEIGHT_MIN;
   }, []);
 
   const handleHeightSlider = useCallback((e) => {
