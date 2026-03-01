@@ -37,7 +37,11 @@ export default function StreetViewOverlay({ position, active }) {
     const lng = position.lng?.toFixed(5);
     const locKey = `${lat},${lng}`;
 
-    if (locKey === locationKeyRef.current) return;
+    if (locKey === locationKeyRef.current) {
+      const hasLoadedImages = Object.values(cacheRef.current).some(img => img !== null);
+      if (hasLoadedImages) setReady(true);
+      return;
+    }
     locationKeyRef.current = locKey;
 
     const cache = {};

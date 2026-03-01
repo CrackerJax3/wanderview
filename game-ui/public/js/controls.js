@@ -100,8 +100,6 @@ AFRAME.registerComponent('wasd-movement', {
     this.headBobTime = 0;
     this.baseY = -15;
     this.isMoving = false;
-    this.baseFov = 75;
-    this.currentFov = 75;
 
     this.onKeyDown = this.onKeyDown.bind(this);
     this.onKeyUp = this.onKeyUp.bind(this);
