@@ -152,41 +152,39 @@ AFRAME.registerComponent('wasd-movement', {
     if (window._analyzerActive) return;
     e.preventDefault();
 
-    var streetHeight = -15;
+    var streetViewThreshold = -10;
     var delta = e.deltaY;
 
-    // Scrolling down (delta > 0) = lower / zoom in
-    // Scrolling up (delta < 0) = higher / zoom out
-
-    if (this.baseY <= streetHeight) {
+    if (this.baseY <= streetViewThreshold) {
+      // In street view
       if (delta > 0) {
-        // Already at street level, scroll down zooms in
+        // Scroll down = zoom in
         this.currentFov -= delta * 0.05;
         this.currentFov = Math.max(20, Math.min(110, this.currentFov));
         this.el.setAttribute('camera', 'fov', this.currentFov);
       } else if (this.currentFov < 75) {
-        // Zoomed in, scroll up zooms out first
+        // Scroll up while zoomed = zoom out first
         this.currentFov -= delta * 0.05;
         this.currentFov = Math.min(75, this.currentFov);
         this.el.setAttribute('camera', 'fov', this.currentFov);
       } else {
-        // Fully zoomed out, scroll up raises height
+        // Fully zoomed out, scroll up = raise height out of street view
         this.currentFov = 75;
         this.el.setAttribute('camera', 'fov', 75);
         this.baseY -= delta * 0.15;
-        this.baseY = Math.max(streetHeight, Math.min(80, this.baseY));
+        this.baseY = Math.min(80, this.baseY);
         this.el.object3D.position.y = this.baseY;
         window.dispatchEvent(new CustomEvent('setViewHeight', { detail: { height: this.baseY } }));
         window.dispatchEvent(new CustomEvent('scrollViewHeight', { detail: { height: this.baseY } }));
       }
     } else {
-      // Above street level — scroll controls height
+      // Above street view — scroll controls height
       if (this.currentFov !== 75) {
         this.currentFov = 75;
         this.el.setAttribute('camera', 'fov', 75);
       }
       this.baseY -= delta * 0.15;
-      this.baseY = Math.max(streetHeight, Math.min(80, this.baseY));
+      this.baseY = Math.max(streetViewThreshold, Math.min(80, this.baseY));
       this.el.object3D.position.y = this.baseY;
       window.dispatchEvent(new CustomEvent('setViewHeight', { detail: { height: this.baseY } }));
       window.dispatchEvent(new CustomEvent('scrollViewHeight', { detail: { height: this.baseY } }));
