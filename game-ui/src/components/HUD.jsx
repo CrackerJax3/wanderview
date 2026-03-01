@@ -41,14 +41,10 @@ function loadTile(tx, ty, zoom) {
 
 function drawPlayerArrow(ctx, cx, cy, headingDeg) {
   const rad = (headingDeg * Math.PI) / 180;
-  const r = 18;
+  const r = 32;
 
   ctx.save();
   ctx.translate(cx, cy);
-
-  // Glow behind arrow
-  ctx.shadowColor = 'rgba(76, 217, 100, 0.5)';
-  ctx.shadowBlur = 10;
 
   // Directional arrow rotated around center
   ctx.rotate(rad);
@@ -59,17 +55,16 @@ function drawPlayerArrow(ctx, cx, cy, headingDeg) {
   ctx.lineTo(r * 0.5, r * 0.35);
   ctx.closePath();
 
-  ctx.fillStyle = '#4CD964';
+  ctx.fillStyle = '#000000';
   ctx.fill();
-  ctx.shadowBlur = 0;
   ctx.strokeStyle = '#FFFFFF';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 3;
   ctx.stroke();
 
   // Center dot
   ctx.rotate(-rad);
   ctx.beginPath();
-  ctx.arc(0, 0, 4, 0, Math.PI * 2);
+  ctx.arc(0, 0, 6, 0, Math.PI * 2);
   ctx.fillStyle = '#FFFFFF';
   ctx.fill();
 
@@ -142,12 +137,16 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
-    const centerX = w / 2;
-    const centerY = h / 2;
+    const scale = w / (3 * TILE_SIZE);
+    const logicalSize = 3 * TILE_SIZE;
+    const centerX = logicalSize / 2;
+    const centerY = logicalSize / 2;
 
-    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.scale(scale, scale);
+    ctx.clearRect(0, 0, logicalSize, logicalSize);
     ctx.fillStyle = '#E5E7EB';
-    ctx.fillRect(0, 0, w, h);
+    ctx.fillRect(0, 0, logicalSize, logicalSize);
 
     // Calculate tile position for player
     const tilePos = latLngToTile(position.lat, position.lng, MINIMAP_ZOOM);
@@ -185,7 +184,7 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
         const lx = centerX + (lmTile.x - tilePos.x) * TILE_SIZE;
         const ly = centerY + (lmTile.y - tilePos.y) * TILE_SIZE;
 
-        if (lx > 5 && lx < w - 5 && ly > 5 && ly < h - 5) {
+        if (lx > 5 && lx < logicalSize - 5 && ly > 5 && ly < logicalSize - 5) {
           ctx.fillStyle = colors[i % colors.length];
           ctx.beginPath();
           ctx.arc(lx, ly, 4, 0, Math.PI * 2);
@@ -199,6 +198,8 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
 
     // Draw player arrow with heading (offset northwest to align with tile position)
     drawPlayerArrow(ctx, centerX - 6, centerY - 6, heading);
+
+    ctx.restore();
   }, [position, heading, tilesLoaded]);
 
   useEffect(() => {
@@ -302,7 +303,7 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
 
       {/* Minimap — bottom right */}
       <div className={`minimap interactive ${!showMinimap ? 'hidden' : ''}`}>
-        <canvas ref={canvasRef} width={256} height={256} />
+        <canvas ref={canvasRef} width={512} height={512} />
       </div>
 
       {/* Crosshair */}
