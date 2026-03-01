@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd game-ui && npm install && npm run build",
+  "outputDirectory": "game-ui/dist",
+  "framework": "vite"
+}
