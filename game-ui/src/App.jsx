@@ -7,6 +7,7 @@ import ModeSelector from './components/ModeSelector';
 import ScreenAnalyzer from './components/ScreenAnalyzer';
 import StreetViewOverlay from './components/StreetViewOverlay';
 import SchedulePanel from './components/SchedulePanel';
+import SubwayWidget from './components/SubwayWidget';
 import { setApiKey as setMistralApiKey, getNarration, generateMission, hasApiKey as hasMistralKey } from './services/mistral';
 import { setApiKey as setPlacesApiKey, getNearbyPlaces } from './services/places';
 
@@ -196,6 +197,8 @@ export default function App() {
               onDecline={handleScheduleDecline}
               onClear={handleScheduleClear}
             />
+
+            <SubwayWidget position={position} />
 
             <MissionPanel
               mission={mission}

@@ -1133,6 +1133,137 @@
   flex: 1;
 }
 
+.schedule-toggle.collapsed {
+  transform: rotate(-90deg);
+}
+
+/* ─── Subway Widget ─── */
+.subway-panel {
+  width: 100%;
+  min-height: 60px;
+  flex-shrink: 0;
+  animation: slideUp 0.3s ease;
+}
+
+.subway-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--white);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  user-select: none;
+}
+
+.subway-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.subway-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--navy);
+  flex: 1;
+}
+
+.subway-toggle {
+  font-size: 0.6rem;
+  color: var(--gray-400);
+  transition: transform 0.2s ease;
+}
+
+.subway-toggle.collapsed {
+  transform: rotate(-90deg);
+}
+
+.subway-body {
+  background: var(--white);
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+  box-shadow: var(--shadow-md);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.subway-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.subway-body::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 2px;
+}
+
+.subway-list {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+}
+
+.subway-item {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--gray-100);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.subway-item:last-child {
+  border-bottom: none;
+}
+
+.subway-item:hover {
+  background: var(--gray-50);
+}
+
+.subway-item-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.subway-item-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.subway-item-lines {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--gray-500);
+  font-variant-numeric: tabular-nums;
+}
+
+.subway-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.65rem;
+  color: var(--gray-500);
+}
+
+.subway-item-distance {
+  font-variant-numeric: tabular-nums;
+}
+
+.subway-item-next {
+  color: var(--gray-600);
+  font-weight: 600;
+}
+
+.subway-empty {
+  padding: 16px;
+  font-size: 0.78rem;
+  color: var(--gray-500);
+  text-align: center;
+  line-height: 1.4;
+}
+
 .schedule-toggle {
   font-size: 0.6rem;
   color: var(--gray-400);
