@@ -255,20 +255,6 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
             ))}
           </div>
         </div>
-        <input
-          type="number"
-          className="height-offset-input"
-          value={Math.round(viewHeight * 10) / 10}
-          onChange={(e) => {
-            const v = parseFloat(e.target.value);
-            if (!isNaN(v) && v >= HEIGHT_MIN) {
-              setViewHeight(v);
-              window.dispatchEvent(new CustomEvent('setViewHeight', { detail: { height: v } }));
-            }
-          }}
-          step="0.5"
-          min={HEIGHT_MIN}
-        />
       </div>
 
       {/* Location Info — bottom left (with colored distance badges) */}

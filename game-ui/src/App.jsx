@@ -5,6 +5,7 @@ import MissionPanel from './components/MissionPanel';
 import AIChat from './components/AIChat';
 import ModeSelector from './components/ModeSelector';
 import ScreenAnalyzer from './components/ScreenAnalyzer';
+import StreetViewOverlay from './components/StreetViewOverlay';
 import { setApiKey as setMistralApiKey, getNarration, generateMission, hasApiKey as hasMistralKey } from './services/mistral';
 import { setApiKey as setPlacesApiKey, getNearbyPlaces } from './services/places';
 
@@ -30,8 +31,15 @@ export default function App() {
   const [score, setScore] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
+  const [viewHeight, setViewHeight] = useState(-15);
   const lastNarrationPos = useRef({ lat: 0, lng: 0 });
   const narrationTimer = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => setViewHeight(e.detail.height);
+    window.addEventListener('setViewHeight', handler);
+    return () => window.removeEventListener('setViewHeight', handler);
+  }, []);
   const chatRef = useRef(null);
 
   // Listen for position changes from game engine
@@ -171,6 +179,11 @@ export default function App() {
             position={position}
             gameMode={gameMode}
             mission={mission}
+          />
+
+          <StreetViewOverlay
+            position={position}
+            active={viewHeight <= -10}
           />
 
           <ScreenAnalyzer

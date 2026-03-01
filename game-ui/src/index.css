@@ -1015,6 +1015,44 @@
   pointer-events: none;
 }
 
+/* ─── Street View Overlay ─── */
+.streetview-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 500;
+  background: #000;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.streetview-overlay.visible {
+  opacity: 1;
+}
+
+.streetview-overlay img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.streetview-badge {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: var(--r-full);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* ─── Chat Capture Image ─── */
 .chat-capture-img {
   display: block;
