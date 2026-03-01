@@ -198,6 +198,7 @@ a-scene {
 #game-ui a,
 #game-ui .interactive,
 #game-ui .chat-container,
+#game-ui .chat-container *,
 #game-ui .mission-panel,
 #game-ui .mode-selector,
 #game-ui .api-key-prompt {
