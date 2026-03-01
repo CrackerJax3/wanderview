@@ -245,6 +245,24 @@ export default function StreetViewOverlay({ position, active }) {
     if (s.raf) { cancelAnimationFrame(s.raf); s.raf = null; }
   }
 
+  // Sync rig position when leaving street view
+  const prevActiveRef = useRef(false);
+  useEffect(() => {
+    if (prevActiveRef.current && !active) {
+      const s = stateRef.current;
+      if (s.currentLat && s.currentLng && window.gameEngine) {
+        const scene = window.gameEngine.latLngToScene(s.currentLat, s.currentLng);
+        const rig = document.getElementById('player-rig');
+        if (rig) {
+          const curY = rig.object3D.position.y;
+          rig.object3D.position.set(scene.x, curY, scene.z);
+        }
+        window.gameEngine.updatePosition(s.currentLat, s.currentLng, s.lon || 0);
+      }
+    }
+    prevActiveRef.current = !!active;
+  }, [active]);
+
   // Load initial panorama
   useEffect(() => {
     window._streetViewActive = !!active;
@@ -346,13 +364,13 @@ export default function StreetViewOverlay({ position, active }) {
       }
       const map = { w: 'w', arrowup: 'w', s: 's', arrowdown: 's', a: 'a', arrowleft: 'a', d: 'd', arrowright: 'd' };
       const k = map[e.key.toLowerCase()];
-      if (k) { e.preventDefault(); s.keys[k] = true; }
+      if (k) { e.preventDefault(); e.stopPropagation(); s.keys[k] = true; }
     };
 
     const onKeyUp = (e) => {
       const map = { w: 'w', arrowup: 'w', s: 's', arrowdown: 's', a: 'a', arrowleft: 'a', d: 'd', arrowright: 'd' };
       const k = map[e.key.toLowerCase()];
-      if (k) s.keys[k] = false;
+      if (k) { e.stopPropagation(); s.keys[k] = false; }
     };
 
     const onResize = () => {
@@ -366,14 +384,14 @@ export default function StreetViewOverlay({ position, active }) {
     if (el) el.addEventListener('click', onClick);
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('keydown', onKeyDown, true);
-    document.addEventListener('keyup', onKeyUp);
+    document.addEventListener('keyup', onKeyUp, true);
     window.addEventListener('resize', onResize);
 
     return () => {
       if (el) el.removeEventListener('click', onClick);
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('keydown', onKeyDown, true);
-      document.removeEventListener('keyup', onKeyUp);
+      document.removeEventListener('keyup', onKeyUp, true);
       window.removeEventListener('resize', onResize);
       if (document.pointerLockElement) document.exitPointerLock();
     };

@@ -164,6 +164,12 @@ AFRAME.registerComponent('wasd-movement', {
     if (!delta) return;
     const dt = delta / 1000;
 
+    // When street view is active, skip all movement but keep updating position
+    if (window._streetViewActive) {
+      this.el.object3D.position.y = this.baseY;
+      return;
+    }
+
     // Vertical movement (Q = down, E = up)
     const moveY = (this.keys.e ? 1 : 0) + (this.keys.q ? -1 : 0);
     if (moveY !== 0) {
