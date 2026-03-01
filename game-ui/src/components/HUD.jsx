@@ -73,12 +73,12 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
   const canvasRef = useRef(null);
   const heading = position?.heading || 0;
 
-  const HEIGHT_MIN = 0.5;
-  const HEIGHT_MAX = 200;
+  const HEIGHT_MIN = 0.3;
+  const HEIGHT_MAX = 80;
   const HEIGHT_MARKS = [
     { label: 'Street', height: 1.6 },
-    { label: 'Elevated', height: 25 },
-    { label: 'Sky View', height: 150 },
+    { label: 'Elevated', height: 10 },
+    { label: 'Sky View', height: 60 },
   ];
 
   const heightToSlider = useCallback((h) => {
@@ -255,6 +255,20 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
             ))}
           </div>
         </div>
+        <input
+          type="number"
+          className="height-offset-input"
+          value={Math.round(viewHeight * 10) / 10}
+          onChange={(e) => {
+            const v = parseFloat(e.target.value);
+            if (!isNaN(v) && v >= HEIGHT_MIN) {
+              setViewHeight(v);
+              window.dispatchEvent(new CustomEvent('setViewHeight', { detail: { height: v } }));
+            }
+          }}
+          step="0.5"
+          min={HEIGHT_MIN}
+        />
       </div>
 
       {/* Location Info — bottom left (with colored distance badges) */}

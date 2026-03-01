@@ -916,6 +916,28 @@
   border-color: var(--green);
 }
 
+.height-offset-input {
+  width: 60px;
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-sm);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--navy);
+  text-align: center;
+  box-shadow: var(--shadow-xs);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.height-offset-input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(76, 217, 100, 0.12);
+}
+
 /* ─── Analyzer Button ─── */
 .analyzer-btn {
   display: flex;
