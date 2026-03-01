@@ -74,9 +74,9 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
   const heading = position?.heading || 0;
 
   const VIEW_LEVELS = [
+    { id: 'sky', label: 'Sky View', icon: '\u2708\uFE0F', height: 150 },
+    { id: 'elevated', label: 'Elevated', icon: '\uD83C\uDFD9\uFE0F', height: 25 },
     { id: 'street', label: 'Street', icon: '\uD83D\uDEB6', height: 1.6 },
-    { id: 'elevated', label: 'Elevated', icon: '\uD83C\uDFD9\uFE0F', height: 50 },
-    { id: 'sky', label: 'Sky View', icon: '\u2708\uFE0F', height: 300 },
   ];
 
   const handleViewLevel = useCallback((level) => {
