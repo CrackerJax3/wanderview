@@ -88,10 +88,11 @@ export default function StreetViewOverlay({ position, active }) {
     const THREE = window.THREE;
     if (!THREE) return;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     s.renderer = renderer;
+    window._streetViewRenderer = renderer;
 
     s.scene = new THREE.Scene();
     s.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);

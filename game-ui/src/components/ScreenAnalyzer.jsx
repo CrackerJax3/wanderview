@@ -70,19 +70,24 @@ export default function ScreenAnalyzer({ active, onCapture, onCancel }) {
   }, [drawing, start, end, onCancel]);
 
   const captureRegion = useCallback((rect) => {
-    const sceneEl = document.querySelector('a-scene');
-    if (!sceneEl || !sceneEl.renderer || !sceneEl.canvas) {
-      onCancel();
-      return;
+    const useStreetView = window._streetViewActive && window._streetViewRenderer;
+    let renderer, gl, dpr;
+
+    if (useStreetView) {
+      renderer = window._streetViewRenderer;
+      gl = renderer.getContext();
+      dpr = renderer.getPixelRatio();
+    } else {
+      const sceneEl = document.querySelector('a-scene');
+      if (!sceneEl || !sceneEl.renderer || !sceneEl.canvas) {
+        onCancel();
+        return;
+      }
+      sceneEl.renderer.render(sceneEl.object3D, sceneEl.camera);
+      renderer = sceneEl.renderer;
+      gl = renderer.getContext();
+      dpr = renderer.getPixelRatio();
     }
-
-    // Force a render so the drawing buffer has current frame data
-    sceneEl.renderer.render(sceneEl.object3D, sceneEl.camera);
-
-    const gl = sceneEl.renderer.getContext();
-    const dpr = sceneEl.renderer.getPixelRatio();
-    const canvasWidth = gl.drawingBufferWidth;
-    const canvasHeight = gl.drawingBufferHeight;
 
     const sx = Math.round(rect.x * dpr);
     const sy = Math.round((window.innerHeight - rect.y - rect.height) * dpr);
@@ -98,7 +103,6 @@ export default function ScreenAnalyzer({ active, onCapture, onCancel }) {
     const ctx = tempCanvas.getContext('2d');
     const imageData = ctx.createImageData(sw, sh);
 
-    // WebGL readPixels is bottom-up, flip vertically
     for (let row = 0; row < sh; row++) {
       const srcOffset = row * sw * 4;
       const dstOffset = (sh - row - 1) * sw * 4;
@@ -108,26 +112,27 @@ export default function ScreenAnalyzer({ active, onCapture, onCancel }) {
     ctx.putImageData(imageData, 0, 0);
     const dataUrl = tempCanvas.toDataURL('image/png');
 
-    // Raycast from center of the selection box to get 3D world coords
     let coords = null;
-    try {
-      const centerX = (rect.x + rect.width / 2) / window.innerWidth * 2 - 1;
-      const centerY = -((rect.y + rect.height / 2) / window.innerHeight * 2 - 1);
+    if (!useStreetView) {
+      try {
+        const sceneEl = document.querySelector('a-scene');
+        const centerX = (rect.x + rect.width / 2) / window.innerWidth * 2 - 1;
+        const centerY = -((rect.y + rect.height / 2) / window.innerHeight * 2 - 1);
 
-      const raycaster = new THREE.Raycaster();
-      raycaster.setFromCamera({ x: centerX, y: centerY }, sceneEl.camera);
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera({ x: centerX, y: centerY }, sceneEl.camera);
 
-      const intersects = raycaster.intersectObjects(sceneEl.object3D.children, true);
-      if (intersects.length > 0 && window.gameEngine) {
-        const point = intersects[0].point;
-        const latLng = window.gameEngine.sceneToLatLng(point.x, point.z);
-        coords = { lat: latLng.lat, lng: latLng.lng };
+        const intersects = raycaster.intersectObjects(sceneEl.object3D.children, true);
+        if (intersects.length > 0 && window.gameEngine) {
+          const point = intersects[0].point;
+          const latLng = window.gameEngine.sceneToLatLng(point.x, point.z);
+          coords = { lat: latLng.lat, lng: latLng.lng };
+        }
+      } catch (e) {
+        console.warn('[Analyzer] Raycast failed:', e.message);
       }
-    } catch (e) {
-      console.warn('[Analyzer] Raycast failed:', e.message);
     }
 
-    // Fall back to player position if raycast missed
     if (!coords && window.gameEngine) {
       coords = window.gameEngine.getPosition();
     }
