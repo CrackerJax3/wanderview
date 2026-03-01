@@ -152,23 +152,21 @@ AFRAME.registerComponent('wasd-movement', {
     if (window._analyzerActive) return;
     e.preventDefault();
 
-    var streetViewThreshold = -10;
+    var streetViewTrigger = -10;
+    var zoomFloor = -15;
     var delta = e.deltaY;
 
-    if (this.baseY <= streetViewThreshold) {
-      // In street view
+    if (this.baseY <= zoomFloor) {
+      // Fully in street view and at zoom floor
       if (delta > 0) {
-        // Scroll down = zoom in
         this.currentFov -= delta * 0.05;
         this.currentFov = Math.max(20, Math.min(110, this.currentFov));
         this.el.setAttribute('camera', 'fov', this.currentFov);
       } else if (this.currentFov < 75) {
-        // Scroll up while zoomed = zoom out first
         this.currentFov -= delta * 0.05;
         this.currentFov = Math.min(75, this.currentFov);
         this.el.setAttribute('camera', 'fov', this.currentFov);
       } else {
-        // Fully zoomed out, scroll up = raise height out of street view
         this.currentFov = 75;
         this.el.setAttribute('camera', 'fov', 75);
         this.baseY -= delta * 0.15;
@@ -178,13 +176,13 @@ AFRAME.registerComponent('wasd-movement', {
         window.dispatchEvent(new CustomEvent('scrollViewHeight', { detail: { height: this.baseY } }));
       }
     } else {
-      // Above street view — scroll controls height
+      // Above zoom floor — scroll controls height
       if (this.currentFov !== 75) {
         this.currentFov = 75;
         this.el.setAttribute('camera', 'fov', 75);
       }
       this.baseY -= delta * 0.15;
-      this.baseY = Math.max(streetViewThreshold, Math.min(80, this.baseY));
+      this.baseY = Math.max(zoomFloor, Math.min(80, this.baseY));
       this.el.object3D.position.y = this.baseY;
       window.dispatchEvent(new CustomEvent('setViewHeight', { detail: { height: this.baseY } }));
       window.dispatchEvent(new CustomEvent('scrollViewHeight', { detail: { height: this.baseY } }));
