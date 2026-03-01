@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
-import { callMistral, callMistralVision } from '../services/mistral';
+import { callMistral, callMistralVision, parseScheduleFromResponse } from '../services/mistral';
 import { getNearbyPlaces } from '../services/places';
 
-const AIChat = forwardRef(function AIChat({ position, gameMode, mission }, ref) {
+const AIChat = forwardRef(function AIChat({ position, gameMode, mission, onScheduleUpdate }, ref) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [expanded, setExpanded] = useState(false);
@@ -91,7 +91,7 @@ const AIChat = forwardRef(function AIChat({ position, gameMode, mission }, ref) 
         position?.lng || -73.9941
       );
 
-      const reply = await callMistral(userMsg, {
+      const rawReply = await callMistral(userMsg, {
         lat: position?.lat || 40.7608,
         lng: position?.lng || -73.9941,
         heading: position?.heading || 0,
@@ -100,7 +100,11 @@ const AIChat = forwardRef(function AIChat({ position, gameMode, mission }, ref) 
         mission,
       });
 
+      const { message: reply, schedule } = parseScheduleFromResponse(rawReply);
       setMessages((prev) => [...prev, { role: 'ai', text: reply }]);
+      if (schedule && onScheduleUpdate) {
+        onScheduleUpdate(schedule);
+      }
     } catch (err) {
       setMessages((prev) => [
         ...prev,

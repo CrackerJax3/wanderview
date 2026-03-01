@@ -5,7 +5,7 @@
 
 const MISTRAL_API_URL = 'https://api.mistral.ai/v1/chat/completions';
 
-const GAME_MASTER_SYSTEM_PROMPT = `You are the Game Master of WanderView. The player is walking through a 3D recreation of the real Hell's Kitchen neighborhood in Manhattan, NYC.
+const GAME_MASTER_SYSTEM_PROMPT = `You are the Game Master and assistant of WanderView. The user is travelling in Manhattan, NYC.
 
 Your personality: A concise New Yorker who knows Hell's Kitchen. Tour guide. Don't be too verbose. Keep to 3 sentences max. 
 
@@ -14,6 +14,7 @@ Your jobs:
 - MISSIONS — Generate things to do based on real nearby places (find a restaurant, visit a landmark, explore a block)
 - ANALYZE AND RESPOND — Answer player questions naturally, accounting for their location, screenshots and screenshot coordinates.
 - REACT — Comment when player reaches interesting spots
+- PLAN — When the player asks you to plan their day, create a schedule. Include their specified stops AND fill gaps with your own suggestions for nearby places worth visiting.
 
 Rules:
 - Keep narration to 1-3 sentences. Be specific about real places.
@@ -21,7 +22,14 @@ Rules:
 - Known for: Restaurant Row (46th St), theater district, diverse food scene, gritty history, gentrification
 - Famous spots: Rudy's Bar, Restaurant Row, Gotham West Market, Hudson Yards nearby, Intrepid Museum, Terminal 5
 - The neighborhood was historically working-class Irish, now very diverse
-- Never break character. You ARE a New Yorker giving a tour.`;
+- Never break character. You ARE a New Yorker giving a tour.
+
+SCHEDULE FORMAT:
+When the player asks to plan their day or schedule activities, respond conversationally first, then append a JSON block wrapped in [SCHEDULE] tags. Each item needs: time, title, location, status ("confirmed" for player-specified items, "suggested" for your additions), and optionally lat/lng.
+Example:
+[SCHEDULE]
+[{"time":"9:00 AM","title":"Visit Times Square","location":"Times Square, 42nd St","status":"confirmed","lat":40.758,"lng":-73.9855},{"time":"10:30 AM","title":"Coffee at Gotham West","location":"Gotham West Market","status":"suggested","lat":40.7635,"lng":-73.9928}]
+[/SCHEDULE]`;
 
 const GAME_MODE_PROMPTS = {
   explorer: 'Mode: Explorer. Freely narrate what the player sees. Share interesting facts, restaurant recommendations, and neighborhood stories.',
@@ -32,6 +40,54 @@ const GAME_MODE_PROMPTS = {
 
 let apiKey = import.meta.env.VITE_MISTRAL_API_KEY || '';
 let conversationHistory = [];
+
+export function parseScheduleFromResponse(text) {
+  let jsonStr = null;
+  let message = text;
+
+  const tagMatch = text.match(/\[SCHEDULE\]([\s\S]*?)\[\/SCHEDULE\]/);
+  if (tagMatch) {
+    jsonStr = tagMatch[1].trim();
+    message = text.replace(/\[SCHEDULE\][\s\S]*?\[\/SCHEDULE\]/, '').trim();
+  }
+
+  if (!jsonStr) {
+    const codeMatch = text.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
+    if (codeMatch) {
+      jsonStr = codeMatch[1].trim();
+      message = text.replace(/```(?:json)?\s*\[[\s\S]*?\]\s*```/, '').trim();
+    }
+  }
+
+  if (!jsonStr) {
+    const arrayMatch = text.match(/(\[[\s\S]*"time"[\s\S]*"title"[\s\S]*\])/);
+    if (arrayMatch) {
+      jsonStr = arrayMatch[1].trim();
+      message = text.replace(arrayMatch[0], '').trim();
+    }
+  }
+
+  if (!jsonStr) return { message: text, schedule: null };
+
+  try {
+    const items = JSON.parse(jsonStr);
+    if (Array.isArray(items) && items.length > 0) {
+      const schedule = items.map((item, i) => ({
+        id: `sched-${Date.now()}-${i}`,
+        time: item.time || '',
+        title: item.title || 'Untitled',
+        location: item.location || '',
+        status: item.status === 'confirmed' ? 'confirmed' : 'suggested',
+        lat: item.lat || null,
+        lng: item.lng || null,
+      }));
+      return { message: message || 'Here\'s your schedule!', schedule };
+    }
+  } catch (e) {
+    console.warn('[Mistral] Failed to parse schedule JSON:', e.message);
+  }
+  return { message: text, schedule: null };
+}
 
 export function setApiKey(key) {
   apiKey = key;
@@ -147,7 +203,7 @@ ${modePrompt}`;
           { role: 'system', content: GAME_MASTER_SYSTEM_PROMPT },
           ...conversationHistory,
         ],
-        max_tokens: 300,
+        max_tokens: 1024,
         temperature: 0.8,
       }),
     });

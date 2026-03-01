@@ -41,31 +41,37 @@ function loadTile(tx, ty, zoom) {
 
 function drawPlayerArrow(ctx, cx, cy, headingDeg) {
   const rad = (headingDeg * Math.PI) / 180;
-  const r = 8;
+  const r = 18;
 
   ctx.save();
   ctx.translate(cx, cy);
 
-  // Position dot at exact center
-  ctx.beginPath();
-  ctx.arc(0, 0, 3, 0, Math.PI * 2);
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fill();
+  // Glow behind arrow
+  ctx.shadowColor = 'rgba(76, 217, 100, 0.5)';
+  ctx.shadowBlur = 10;
 
   // Directional arrow rotated around center
   ctx.rotate(rad);
   ctx.beginPath();
   ctx.moveTo(0, -r);
   ctx.lineTo(-r * 0.5, r * 0.35);
-  ctx.lineTo(0, r * 0.1);
+  ctx.lineTo(0, r * 0.05);
   ctx.lineTo(r * 0.5, r * 0.35);
   ctx.closePath();
 
   ctx.fillStyle = '#4CD964';
   ctx.fill();
+  ctx.shadowBlur = 0;
   ctx.strokeStyle = '#FFFFFF';
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 2;
   ctx.stroke();
+
+  // Center dot
+  ctx.rotate(-rad);
+  ctx.beginPath();
+  ctx.arc(0, 0, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fill();
 
   ctx.restore();
 }
@@ -191,8 +197,8 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
       });
     }
 
-    // Draw player arrow with heading
-    drawPlayerArrow(ctx, centerX, centerY, heading);
+    // Draw player arrow with heading (offset northwest to align with tile position)
+    drawPlayerArrow(ctx, centerX - 6, centerY - 6, heading);
   }, [position, heading, tilesLoaded]);
 
   useEffect(() => {

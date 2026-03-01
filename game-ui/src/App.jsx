@@ -6,6 +6,7 @@ import AIChat from './components/AIChat';
 import ModeSelector from './components/ModeSelector';
 import ScreenAnalyzer from './components/ScreenAnalyzer';
 import StreetViewOverlay from './components/StreetViewOverlay';
+import SchedulePanel from './components/SchedulePanel';
 import { setApiKey as setMistralApiKey, getNarration, generateMission, hasApiKey as hasMistralKey } from './services/mistral';
 import { setApiKey as setPlacesApiKey, getNearbyPlaces } from './services/places';
 
@@ -32,6 +33,7 @@ export default function App() {
   const [showControls, setShowControls] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [viewHeight, setViewHeight] = useState(-15);
+  const [schedule, setSchedule] = useState([]);
   const lastNarrationPos = useRef({ lat: 0, lng: 0 });
   const narrationTimer = useRef(null);
 
@@ -149,6 +151,24 @@ export default function App() {
     }, 3000);
   }, [position, gameMode]);
 
+  const handleScheduleUpdate = useCallback((items) => {
+    setSchedule((prev) => [...prev, ...items]);
+  }, []);
+
+  const handleScheduleAccept = useCallback((id) => {
+    setSchedule((prev) =>
+      prev.map((item) => item.id === id ? { ...item, status: 'confirmed' } : item)
+    );
+  }, []);
+
+  const handleScheduleDecline = useCallback((id) => {
+    setSchedule((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
+  const handleScheduleClear = useCallback(() => {
+    setSchedule([]);
+  }, []);
+
   return (
     <>
       {/* Mode Selector */}
@@ -168,17 +188,27 @@ export default function App() {
             onAnalyze={() => setAnalyzing(true)}
           />
 
-          <MissionPanel
-            mission={mission}
-            position={position}
-            onComplete={handleMissionComplete}
-          />
+          <div className="right-sidebar">
+            <MissionPanel
+              mission={mission}
+              position={position}
+              onComplete={handleMissionComplete}
+            />
+
+            <SchedulePanel
+              items={schedule}
+              onAccept={handleScheduleAccept}
+              onDecline={handleScheduleDecline}
+              onClear={handleScheduleClear}
+            />
+          </div>
 
           <AIChat
             ref={chatRef}
             position={position}
             gameMode={gameMode}
             mission={mission}
+            onScheduleUpdate={handleScheduleUpdate}
           />
 
           <StreetViewOverlay
