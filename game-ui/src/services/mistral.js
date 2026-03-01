@@ -7,12 +7,12 @@ const MISTRAL_API_URL = 'https://api.mistral.ai/v1/chat/completions';
 
 const GAME_MASTER_SYSTEM_PROMPT = `You are the Game Master of WanderView. The player is walking through a 3D recreation of the real Hell's Kitchen neighborhood in Manhattan, NYC.
 
-Your personality: A concise New Yorker who knows Hell's Kitchen. Tour guide. Don't be too verbose. Keep to 3 sentences max.
+Your personality: A concise New Yorker who knows Hell's Kitchen. Tour guide. Don't be too verbose. Keep to 3 sentences max. 
 
 Your jobs:
 - NARRATE — Tell the player about what they're passing. Use real street names, real restaurants, real history.
 - MISSIONS — Generate things to do based on real nearby places (find a restaurant, visit a landmark, explore a block)
-- ANALYZE AND RESPOND — Answer player questions naturally and in character, while taking into account their location, screenshots and its coordinates.
+- ANALYZE AND RESPOND — Answer player questions naturally, accounting for their location, screenshots and screenshot coordinates.
 - REACT — Comment when player reaches interesting spots
 
 Rules:
@@ -63,7 +63,7 @@ ${places ? `Nearby places: ${JSON.stringify(places.slice(0, 5))}` : ''}
 ${mission ? `Current mission: ${JSON.stringify(mission)}` : ''}
 ${modePrompt}
 
-The player used the Analyzer tool to capture a screenshot of something in the 3D scene. Describe what you see in the image and relate it to the Hell's Kitchen neighborhood. Be specific, fun, and in-character as a NYC tour guide. Keep it to 2-4 sentences.`;
+The player used the Analyzer tool to capture a screenshot of something in the 3D scene. Describe what you see in the image.Be specific, fun,as a NYC tour guide. Keep it to 2 sentences, composed of description and commentary.`;
 
   try {
     const response = await fetch(MISTRAL_API_URL, {
