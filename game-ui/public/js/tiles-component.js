@@ -171,8 +171,8 @@ AFRAME.registerComponent('google-3dtiles', {
     // Ground plane
     var ground = document.createElement('a-plane');
     ground.setAttribute('rotation', '-90 0 0');
-    ground.setAttribute('width', '2000');
-    ground.setAttribute('height', '2000');
+    ground.setAttribute('width', '4000');
+    ground.setAttribute('height', '4000');
     ground.setAttribute('color', '#555555');
     ground.setAttribute('material', 'roughness: 0.9');
     container.appendChild(ground);
@@ -183,18 +183,50 @@ AFRAME.registerComponent('google-3dtiles', {
   },
 
   _createStreetGrid: function (parent) {
+    var ORIGIN_LAT = 40.7608;
+    var ORIGIN_LNG = -73.9941;
+    var M_PER_DEG_LAT = 111320;
+    var M_PER_DEG_LNG = 111320 * Math.cos(ORIGIN_LAT * Math.PI / 180);
+
+    function lngToX(lng) { return (lng - ORIGIN_LNG) * M_PER_DEG_LNG; }
+    function latToZ(lat) { return -(lat - ORIGIN_LAT) * M_PER_DEG_LAT; }
+
     var avenues = [
-      { name: '9th Ave', offset: 0 },
-      { name: '10th Ave', offset: -80 },
-      { name: '11th Ave', offset: -160 },
+      { name: '8th Ave',  lng: -73.9878 },
+      { name: '9th Ave',  lng: -73.9918 },
+      { name: '10th Ave', lng: -73.9962 },
+      { name: '11th Ave', lng: -74.0004 },
+      { name: '12th Ave', lng: -74.0040 },
     ];
 
+    var streets = [
+      { name: '42nd St', lat: 40.7565 },
+      { name: '43rd St', lat: 40.7574 },
+      { name: '44th St', lat: 40.7583 },
+      { name: '45th St', lat: 40.7591 },
+      { name: '46th St', lat: 40.7600 },
+      { name: '47th St', lat: 40.7608 },
+      { name: '48th St', lat: 40.7617 },
+      { name: '49th St', lat: 40.7625 },
+      { name: '50th St', lat: 40.7634 },
+      { name: '51st St', lat: 40.7643 },
+      { name: '52nd St', lat: 40.7651 },
+      { name: '53rd St', lat: 40.7660 },
+      { name: '54th St', lat: 40.7668 },
+      { name: '55th St', lat: 40.7677 },
+      { name: '56th St', lat: 40.7685 },
+      { name: '57th St', lat: 40.7694 },
+    ];
+
+    var gridLen = 2000;
+
     avenues.forEach(function (ave) {
+      var x = lngToX(ave.lng);
       var line = document.createElement('a-plane');
       line.setAttribute('rotation', '-90 0 0');
       line.setAttribute('width', '15');
-      line.setAttribute('height', '1000');
-      line.setAttribute('position', ave.offset + ' 0.01 0');
+      line.setAttribute('height', '' + gridLen);
+      line.setAttribute('position', x + ' 0.01 0');
       line.setAttribute('color', '#444444');
       line.setAttribute('material', 'roughness: 1');
       parent.appendChild(line);
@@ -203,53 +235,72 @@ AFRAME.registerComponent('google-3dtiles', {
         var sidewalk = document.createElement('a-plane');
         sidewalk.setAttribute('rotation', '-90 0 0');
         sidewalk.setAttribute('width', '3');
-        sidewalk.setAttribute('height', '1000');
-        sidewalk.setAttribute('position', (ave.offset + sx) + ' 0.02 0');
+        sidewalk.setAttribute('height', '' + gridLen);
+        sidewalk.setAttribute('position', (x + sx) + ' 0.02 0');
         sidewalk.setAttribute('color', '#777777');
         parent.appendChild(sidewalk);
       });
     });
 
-    for (var st = -5; st <= 5; st++) {
-      var z = st * 80;
+    streets.forEach(function (st) {
+      var z = latToZ(st.lat);
       var line = document.createElement('a-plane');
       line.setAttribute('rotation', '-90 0 0');
-      line.setAttribute('width', '500');
+      line.setAttribute('width', '' + gridLen);
       line.setAttribute('height', '12');
       line.setAttribute('position', '0 0.01 ' + z);
       line.setAttribute('color', '#444444');
       parent.appendChild(line);
 
       var label = document.createElement('a-text');
-      var streetNum = 47 + st;
-      label.setAttribute('value', streetNum + 'th St');
-      label.setAttribute('position', '30 0.5 ' + z);
+      label.setAttribute('value', st.name);
+      label.setAttribute('position', (lngToX(avenues[0].lng) + 30) + ' 0.5 ' + z);
       label.setAttribute('color', '#ffffff');
       label.setAttribute('width', '20');
       label.setAttribute('align', 'center');
       parent.appendChild(label);
-    }
+    });
   },
 
   _createBuildings: function (parent) {
+    var ORIGIN_LAT = 40.7608;
+    var ORIGIN_LNG = -73.9941;
+    var M_PER_DEG_LAT = 111320;
+    var M_PER_DEG_LNG = 111320 * Math.cos(ORIGIN_LAT * Math.PI / 180);
+
+    function lngToX(lng) { return (lng - ORIGIN_LNG) * M_PER_DEG_LNG; }
+    function latToZ(lat) { return -(lat - ORIGIN_LAT) * M_PER_DEG_LAT; }
+
+    var aveLngs = [-73.9878, -73.9918, -73.9962, -74.0004];
+    var stLats = [40.7565, 40.7574, 40.7583, 40.7591, 40.7600, 40.7608,
+                  40.7617, 40.7625, 40.7634, 40.7643, 40.7651, 40.7660,
+                  40.7668, 40.7677, 40.7685, 40.7694];
+
     var colors = [
       '#8B4513', '#A0522D', '#D2691E', '#CD853F',
       '#BC8F8F', '#A9A9A9', '#808080', '#696969',
       '#B8860B', '#DAA520', '#C0C0C0', '#778899',
     ];
 
-    for (var ax = 0; ax < 3; ax++) {
-      for (var st = -5; st <= 4; st++) {
-        var blockX = -ax * 80 - 40;
-        var blockZ = st * 80 + 40;
-        var count = 3 + Math.floor(Math.random() * 4);
+    for (var ax = 0; ax < aveLngs.length - 1; ax++) {
+      var blockLeftX = lngToX(aveLngs[ax]);
+      var blockRightX = lngToX(aveLngs[ax + 1]);
+      var blockCenterX = (blockLeftX + blockRightX) / 2;
+      var blockW = Math.abs(blockLeftX - blockRightX) - 30;
+
+      for (var si = 0; si < stLats.length - 1; si++) {
+        var blockTopZ = latToZ(stLats[si + 1]);
+        var blockBotZ = latToZ(stLats[si]);
+        var blockCenterZ = (blockTopZ + blockBotZ) / 2;
+        var blockD = Math.abs(blockTopZ - blockBotZ) - 20;
+        var count = 3 + Math.floor(Math.random() * 5);
 
         for (var b = 0; b < count; b++) {
-          var bx = blockX + (Math.random() - 0.5) * 50;
-          var bz = blockZ + (Math.random() - 0.5) * 50;
+          var bx = blockCenterX + (Math.random() - 0.5) * blockW;
+          var bz = blockCenterZ + (Math.random() - 0.5) * blockD;
           var h = 15 + Math.random() * 50;
-          var w = 8 + Math.random() * 15;
-          var d = 8 + Math.random() * 15;
+          var w = 10 + Math.random() * 20;
+          var d = 10 + Math.random() * 20;
           var c = colors[Math.floor(Math.random() * colors.length)];
 
           var building = document.createElement('a-box');

@@ -235,6 +235,28 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mission-toggle {
+  margin-left: auto;
+  font-size: 0.6rem;
+  color: var(--gray-400);
+  transition: transform 0.2s ease;
+}
+
+.mission-toggle.collapsed {
+  transform: rotate(0deg);
+}
+
+.mission-name-mini {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mission-status-dot {
