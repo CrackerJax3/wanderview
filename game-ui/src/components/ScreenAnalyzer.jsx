@@ -70,25 +70,42 @@ export default function ScreenAnalyzer({ active, onCapture, onCancel }) {
   }, [drawing, start, end, onCancel]);
 
   const captureRegion = useCallback((rect) => {
-    const sceneCanvas = document.querySelector('a-scene')?.canvas;
-    if (!sceneCanvas) {
+    const sceneEl = document.querySelector('a-scene');
+    if (!sceneEl || !sceneEl.renderer || !sceneEl.canvas) {
       onCancel();
       return;
     }
 
-    const dpr = window.devicePixelRatio || 1;
-    const sx = rect.x * dpr;
-    const sy = rect.y * dpr;
-    const sw = rect.width * dpr;
-    const sh = rect.height * dpr;
+    // Force a render so the drawing buffer has current frame data
+    sceneEl.renderer.render(sceneEl.object3D, sceneEl.camera);
+
+    const gl = sceneEl.renderer.getContext();
+    const dpr = sceneEl.renderer.getPixelRatio();
+    const canvasWidth = gl.drawingBufferWidth;
+    const canvasHeight = gl.drawingBufferHeight;
+
+    const sx = Math.round(rect.x * dpr);
+    const sy = Math.round((window.innerHeight - rect.y - rect.height) * dpr);
+    const sw = Math.round(rect.width * dpr);
+    const sh = Math.round(rect.height * dpr);
+
+    const pixels = new Uint8Array(sw * sh * 4);
+    gl.readPixels(sx, sy, sw, sh, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = rect.width;
-    tempCanvas.height = rect.height;
+    tempCanvas.width = sw;
+    tempCanvas.height = sh;
     const ctx = tempCanvas.getContext('2d');
+    const imageData = ctx.createImageData(sw, sh);
 
-    ctx.drawImage(sceneCanvas, sx, sy, sw, sh, 0, 0, rect.width, rect.height);
+    // WebGL readPixels is bottom-up, flip vertically
+    for (let row = 0; row < sh; row++) {
+      const srcOffset = row * sw * 4;
+      const dstOffset = (sh - row - 1) * sw * 4;
+      imageData.data.set(pixels.subarray(srcOffset, srcOffset + sw * 4), dstOffset);
+    }
 
+    ctx.putImageData(imageData, 0, 0);
     const dataUrl = tempCanvas.toDataURL('image/png');
     onCapture(dataUrl);
   }, [onCapture, onCancel]);
