@@ -41,24 +41,30 @@ function loadTile(tx, ty, zoom) {
 
 function drawPlayerArrow(ctx, cx, cy, headingDeg) {
   const rad = (headingDeg * Math.PI) / 180;
-  const size = 10;
+  const r = 8;
 
   ctx.save();
   ctx.translate(cx, cy);
-  ctx.rotate(rad);
 
-  // Arrow body
+  // Position dot at exact center
   ctx.beginPath();
-  ctx.moveTo(0, -size);
-  ctx.lineTo(-size * 0.6, size * 0.6);
-  ctx.lineTo(0, size * 0.2);
-  ctx.lineTo(size * 0.6, size * 0.6);
+  ctx.arc(0, 0, 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fill();
+
+  // Directional arrow rotated around center
+  ctx.rotate(rad);
+  ctx.beginPath();
+  ctx.moveTo(0, -r);
+  ctx.lineTo(-r * 0.5, r * 0.35);
+  ctx.lineTo(0, r * 0.1);
+  ctx.lineTo(r * 0.5, r * 0.35);
   ctx.closePath();
 
   ctx.fillStyle = '#4CD964';
   ctx.fill();
   ctx.strokeStyle = '#FFFFFF';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
   ctx.restore();
