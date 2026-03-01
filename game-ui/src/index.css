@@ -820,6 +820,58 @@
   margin: 0 1px;
 }
 
+/* ─── View Level Menu — left side ─── */
+.view-level-menu {
+  position: fixed;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1010;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.view-level-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-md);
+  color: var(--gray-500);
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+  min-width: 110px;
+}
+
+.view-level-btn:hover {
+  background: var(--gray-50);
+  border-color: var(--gray-300);
+  color: var(--navy);
+}
+
+.view-level-btn.active {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: var(--white);
+  box-shadow: var(--shadow-md);
+}
+
+.view-level-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.view-level-label {
+  white-space: nowrap;
+}
+
 /* ─── Analyzer Button ─── */
 .analyzer-btn {
   display: flex;

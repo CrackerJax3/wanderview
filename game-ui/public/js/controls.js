@@ -107,6 +107,12 @@ AFRAME.registerComponent('wasd-movement', {
     this.onKeyUp = this.onKeyUp.bind(this);
     this.onWheel = this.onWheel.bind(this);
 
+    var self = this;
+    window.addEventListener('setViewHeight', function (e) {
+      self.baseY = e.detail.height;
+      self.el.object3D.position.y = self.baseY;
+    });
+
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('keyup', this.onKeyUp);
     document.addEventListener('wheel', this.onWheel, { passive: false });

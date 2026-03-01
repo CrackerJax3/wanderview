@@ -69,8 +69,20 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
   const [landmarks, setLandmarks] = useState([]);
   const [showMinimap, setShowMinimap] = useState(true);
   const [tilesLoaded, setTilesLoaded] = useState(0);
+  const [viewLevel, setViewLevel] = useState('street');
   const canvasRef = useRef(null);
   const heading = position?.heading || 0;
+
+  const VIEW_LEVELS = [
+    { id: 'street', label: 'Street', icon: '\uD83D\uDEB6', height: 1.6 },
+    { id: 'elevated', label: 'Elevated', icon: '\uD83C\uDFD9\uFE0F', height: 50 },
+    { id: 'sky', label: 'Sky View', icon: '\u2708\uFE0F', height: 300 },
+  ];
+
+  const handleViewLevel = useCallback((level) => {
+    setViewLevel(level.id);
+    window.dispatchEvent(new CustomEvent('setViewHeight', { detail: { height: level.height } }));
+  }, []);
 
   useEffect(() => {
     if (!position || !window.gameNavigation) return;
@@ -197,6 +209,21 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
           </div>
         </div>
         <div className="compass-heading">{compassDirection} {Math.round(heading)}°</div>
+      </div>
+
+      {/* View Level — left side */}
+      <div className="view-level-menu">
+        {VIEW_LEVELS.map((level) => (
+          <button
+            key={level.id}
+            className={`view-level-btn interactive ${viewLevel === level.id ? 'active' : ''}`}
+            onClick={() => handleViewLevel(level)}
+            title={level.label}
+          >
+            <span className="view-level-icon">{level.icon}</span>
+            <span className="view-level-label">{level.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* Location Info — bottom left (with colored distance badges) */}
