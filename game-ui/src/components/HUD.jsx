@@ -76,7 +76,7 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
   const HEIGHT_MIN = -30;
   const HEIGHT_MAX = 80;
   const HEIGHT_MARKS = [
-    { label: 'Street', height: -15 },
+    { label: 'Street', height: -25 },
     { label: 'Elevated', height: 10 },
     { label: 'Sky View', height: 60 },
   ];

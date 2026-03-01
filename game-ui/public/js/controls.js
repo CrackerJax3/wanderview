@@ -153,7 +153,7 @@ AFRAME.registerComponent('wasd-movement', {
     e.preventDefault();
 
     var streetViewTrigger = -10;
-    var zoomFloor = -15;
+    var zoomFloor = -25;
     var delta = e.deltaY;
 
     if (this.baseY <= zoomFloor) {
