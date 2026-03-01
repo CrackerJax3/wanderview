@@ -155,27 +155,41 @@ AFRAME.registerComponent('wasd-movement', {
     var streetHeight = -15;
     var delta = e.deltaY;
 
-    if (this.baseY <= streetHeight && delta > 0) {
-      // At or below street level scrolling down — zoom in via FOV
-      this.currentFov += delta * 0.05;
-      this.currentFov = Math.max(20, Math.min(110, this.currentFov));
-      this.el.setAttribute('camera', 'fov', this.currentFov);
-    } else if (this.baseY <= streetHeight && delta < 0 && this.currentFov < 75) {
-      // At street level but zoomed in — zoom out first
-      this.currentFov += delta * 0.05;
-      this.currentFov = Math.max(20, Math.min(110, this.currentFov));
-      this.el.setAttribute('camera', 'fov', this.currentFov);
+    // Scrolling down (delta > 0) = lower / zoom in
+    // Scrolling up (delta < 0) = higher / zoom out
+
+    if (this.baseY <= streetHeight) {
+      if (delta > 0) {
+        // Already at street level, scroll down zooms in
+        this.currentFov -= delta * 0.05;
+        this.currentFov = Math.max(20, Math.min(110, this.currentFov));
+        this.el.setAttribute('camera', 'fov', this.currentFov);
+      } else if (this.currentFov < 75) {
+        // Zoomed in, scroll up zooms out first
+        this.currentFov -= delta * 0.05;
+        this.currentFov = Math.min(75, this.currentFov);
+        this.el.setAttribute('camera', 'fov', this.currentFov);
+      } else {
+        // Fully zoomed out, scroll up raises height
+        this.currentFov = 75;
+        this.el.setAttribute('camera', 'fov', 75);
+        this.baseY -= delta * 0.15;
+        this.baseY = Math.max(streetHeight, Math.min(80, this.baseY));
+        this.el.object3D.position.y = this.baseY;
+        window.dispatchEvent(new CustomEvent('setViewHeight', { detail: { height: this.baseY } }));
+        window.dispatchEvent(new CustomEvent('scrollViewHeight', { detail: { height: this.baseY } }));
+      }
     } else {
-      // Otherwise scroll controls height
-      // Reset FOV when leaving street level
+      // Above street level — scroll controls height
       if (this.currentFov !== 75) {
         this.currentFov = 75;
         this.el.setAttribute('camera', 'fov', 75);
       }
       this.baseY -= delta * 0.15;
-      this.baseY = Math.max(-30, Math.min(80, this.baseY));
+      this.baseY = Math.max(streetHeight, Math.min(80, this.baseY));
       this.el.object3D.position.y = this.baseY;
       window.dispatchEvent(new CustomEvent('setViewHeight', { detail: { height: this.baseY } }));
+      window.dispatchEvent(new CustomEvent('scrollViewHeight', { detail: { height: this.baseY } }));
     }
   },
 

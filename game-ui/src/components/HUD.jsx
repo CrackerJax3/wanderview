@@ -96,6 +96,13 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
     window.dispatchEvent(new CustomEvent('setViewHeight', { detail: { height: h } }));
   }, [sliderToHeight]);
 
+  // Sync slider when scroll wheel changes height
+  useEffect(() => {
+    const handler = (e) => setViewHeight(e.detail.height);
+    window.addEventListener('scrollViewHeight', handler);
+    return () => window.removeEventListener('scrollViewHeight', handler);
+  }, []);
+
   const handleHeightMark = useCallback((h) => {
     setViewHeight(h);
     window.dispatchEvent(new CustomEvent('setViewHeight', { detail: { height: h } }));
