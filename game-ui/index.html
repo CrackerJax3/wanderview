@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WanderView</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css" />
+
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+
+  <!-- 3D Tiles loader (UMD build — uses A-Frame's window.THREE) -->
+  <script src="/js/three-loader-3dtiles.umd.js"></script>
+
+  <!-- Inject API keys before game scripts (Vite replaces %VITE_*% at build time) -->
+  <script>
+    (function() {
+      var gk = '%VITE_GOOGLE_API_KEY%';
+      if (gk && gk.indexOf('VITE_GOOGLE') === -1) {
+        window.WANDERVIEW_GOOGLE_API_KEY = gk;
+        console.log('[WanderView] Google API key injected via HTML (' + gk.substring(0, 8) + '...)');
+      } else {
+        console.warn('[WanderView] Google API key NOT injected via HTML (raw value: "' + gk.substring(0, 20) + '...")');
+      }
+      var mk = '%VITE_MISTRAL_API_KEY%';
+      if (mk && mk.indexOf('VITE_MISTRAL') === -1) {
+        window.WANDERVIEW_MISTRAL_API_KEY = mk;
+        console.log('[WanderView] Mistral API key injected via HTML');
+      }
+    })();
+  </script>
+
+  <!-- Game engine scripts -->
+  <script src="/js/bridge.js"></script>
+  <script src="/js/tiles-component.js"></script>
+  <script src="/js/controls.js"></script>
+  <script src="/js/engine.js"></script>
+  <script src="/js/navigation.js"></script>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <div class="loader-content">
+      <h1>WANDERVIEW</h1>
+      <p class="loader-subtitle">Loading the streets of New York...</p>
+      <div class="loader-bar"><div class="loader-fill"></div></div>
+      <p class="loader-hint">Click to start exploring</p>
+    </div>
+  </div>
+
+  <!-- A-Frame 3D Scene (Person A: full-screen 3D world) -->
+  <a-scene
+    id="game-scene"
+    vr-mode-ui="enabled: false"
+    renderer="colorManagement: true; sortObjects: true; physicallyCorrectLights: true; logarithmicDepthBuffer: true"
+    fog="type: exponential; color: #9dc4e0; density: 0.00015"
+    loading-screen="enabled: false"
+  >
+    <!-- Lighting -->
+    <a-entity light="type: ambient; color: #b4c8d8; intensity: 0.6"></a-entity>
+    <a-entity light="type: directional; color: #ffeedd; intensity: 1.2"
+              position="-1 2 1"
+              light="castShadow: true"></a-entity>
+
+    <!-- Sky -->
+    <a-sky color="#87CEEB"></a-sky>
+
+    <!-- Google 3D Tiles -->
+    <a-entity id="tiles-entity" google-3dtiles></a-entity>
+
+    <!-- Player Camera Rig -->
+    <a-entity id="player-rig" position="0 0 0">
+      <a-entity id="player-camera"
+                camera="fov: 75; near: 0.5; far: 10000"
+                position="0 1.6 0"
+                fps-look-controls
+                wasd-movement="speed: 8; fly: false">
+      </a-entity>
+    </a-entity>
+  </a-scene>
+
+  <!-- React overlay mount point (Person B: transparent React overlay) -->
+  <div id="game-ui"></div>
+
+  <!-- React app entry -->
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>
