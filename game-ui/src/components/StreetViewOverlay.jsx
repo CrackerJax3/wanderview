@@ -1,42 +1,46 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 
 const SV_STATIC = 'https://maps.googleapis.com/maps/api/streetview';
-const SLICES = 12;
-const SLICE_FOV = 30;
+const H_SLICES = 6;
+const H_FOV = 60;
 const IMG_SIZE = 640;
+const PITCHES = [45, 0, -45];
+const PANO_W = H_SLICES * IMG_SIZE;
+const PANO_H = PANO_W / 2;
 
 function buildPanorama(lat, lng, apiKey) {
   return new Promise((resolve) => {
-    const panoW = SLICES * IMG_SIZE;
-    const panoH = panoW / 2;
     const canvas = document.createElement('canvas');
-    canvas.width = panoW;
-    canvas.height = panoH;
+    canvas.width = PANO_W;
+    canvas.height = PANO_H;
     const ctx = canvas.getContext('2d');
 
     ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(0, 0, panoW, panoH);
+    ctx.fillRect(0, 0, PANO_W, PANO_H);
 
+    const total = H_SLICES * PITCHES.length;
     let loaded = 0;
-    const bandY = Math.round((panoH - IMG_SIZE) / 2);
 
-    for (let i = 0; i < SLICES; i++) {
-      const heading = i * SLICE_FOV;
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = `${SV_STATIC}?size=${IMG_SIZE}x${IMG_SIZE}&location=${lat},${lng}&heading=${heading}&pitch=0&fov=${SLICE_FOV}&key=${apiKey}`;
-      const idx = i;
-      img.onload = () => {
-        ctx.drawImage(img, idx * IMG_SIZE, bandY, IMG_SIZE, IMG_SIZE);
-        loaded++;
-        if (loaded >= SLICES) resolve(canvas);
-      };
-      img.onerror = () => {
-        console.warn(`[StreetView] Failed to load slice ${idx}`);
-        loaded++;
-        if (loaded >= SLICES) resolve(canvas);
-      };
-    }
+    PITCHES.forEach((pitch) => {
+      const yCenter = (PANO_H / 2) * (1 - pitch / 90);
+      const bandY = Math.round(yCenter - IMG_SIZE / 2);
+
+      for (let i = 0; i < H_SLICES; i++) {
+        const heading = i * H_FOV;
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = `${SV_STATIC}?size=${IMG_SIZE}x${IMG_SIZE}&location=${lat},${lng}&heading=${heading}&pitch=${pitch}&fov=${H_FOV}&key=${apiKey}`;
+        const x = i * IMG_SIZE;
+        const y = bandY;
+        img.onload = () => {
+          ctx.drawImage(img, x, y, IMG_SIZE, IMG_SIZE);
+          if (++loaded >= total) resolve(canvas);
+        };
+        img.onerror = () => {
+          if (++loaded >= total) resolve(canvas);
+        };
+      }
+    });
   });
 }
 
@@ -48,9 +52,6 @@ export default function StreetViewOverlay({ position, active }) {
     camera: null,
     mesh: null,
     raf: null,
-    dragging: false,
-    prevX: 0,
-    prevY: 0,
     lon: 0,
     lat: 0,
     initialized: false,
@@ -66,48 +67,42 @@ export default function StreetViewOverlay({ position, active }) {
     const s = stateRef.current;
     if (s.initialized) return;
     const THREE = window.THREE;
-    if (!THREE) { console.error('[StreetView] THREE not found'); return; }
+    if (!THREE) return;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     s.renderer = renderer;
 
-    const scene = new THREE.Scene();
-    s.scene = scene;
-
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
-    s.camera = camera;
+    s.scene = new THREE.Scene();
+    s.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
 
     const geo = new THREE.SphereGeometry(500, 60, 40);
     geo.scale(-1, 1, 1);
-    const mat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-    const mesh = new THREE.Mesh(geo, mat);
-    scene.add(mesh);
-    s.mesh = mesh;
+    s.mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x000000 }));
+    s.scene.add(s.mesh);
     s.initialized = true;
   }
 
   function startRenderLoop() {
     const s = stateRef.current;
     if (!s.renderer || !s.scene || !s.camera) return;
-
     const container = containerRef.current;
     if (container && !container.contains(s.renderer.domElement)) {
       container.insertBefore(s.renderer.domElement, container.firstChild);
     }
-
     s.renderer.setSize(window.innerWidth, window.innerHeight);
     s.camera.aspect = window.innerWidth / window.innerHeight;
     s.camera.updateProjectionMatrix();
 
     if (s.raf) cancelAnimationFrame(s.raf);
+    const THREE = window.THREE;
 
     function animate() {
       s.raf = requestAnimationFrame(animate);
       const clampedLat = Math.max(-85, Math.min(85, s.lat));
-      const phi = window.THREE.MathUtils.degToRad(90 - clampedLat);
-      const theta = window.THREE.MathUtils.degToRad(s.lon);
+      const phi = THREE.MathUtils.degToRad(90 - clampedLat);
+      const theta = THREE.MathUtils.degToRad(s.lon);
       s.camera.lookAt(
         500 * Math.sin(phi) * Math.cos(theta),
         500 * Math.cos(phi),
@@ -125,7 +120,6 @@ export default function StreetViewOverlay({ position, active }) {
 
   useEffect(() => {
     window._streetViewActive = !!active;
-
     if (!active || !position) {
       setReady(false);
       stopRenderLoop();
@@ -133,7 +127,7 @@ export default function StreetViewOverlay({ position, active }) {
     }
 
     const apiKey = getApiKey();
-    if (!apiKey) { console.warn('[StreetView] No API key'); return; }
+    if (!apiKey) return;
 
     initThreeScene();
 
@@ -143,8 +137,7 @@ export default function StreetViewOverlay({ position, active }) {
 
     if (document.pointerLockElement) document.exitPointerLock();
 
-    const heading = position.heading || 0;
-    stateRef.current.lon = heading;
+    stateRef.current.lon = position.heading || 0;
     stateRef.current.lat = 0;
 
     if (locKey === locKeyRef.current) {
@@ -155,14 +148,11 @@ export default function StreetViewOverlay({ position, active }) {
     locKeyRef.current = locKey;
 
     let cancelled = false;
-
     (async () => {
       try {
-        console.log('[StreetView] Loading panorama for', lat, lng);
         const panoCanvas = await buildPanorama(lat, lng, apiKey);
         if (cancelled) return;
 
-        console.log('[StreetView] Panorama stitched, creating texture');
         const THREE = window.THREE;
         const texture = new THREE.CanvasTexture(panoCanvas);
         if (THREE.SRGBColorSpace) texture.colorSpace = THREE.SRGBColorSpace;
@@ -172,37 +162,35 @@ export default function StreetViewOverlay({ position, active }) {
           s.mesh.material.dispose();
           s.mesh.material = new THREE.MeshBasicMaterial({ map: texture });
         }
-
         startRenderLoop();
         setReady(true);
-        console.log('[StreetView] Rendering started');
       } catch (err) {
-        console.error('[StreetView] Error:', err);
+        console.error('[StreetView]', err);
       }
     })();
 
     return () => { cancelled = true; };
   }, [position?.lat, position?.lng, active, getApiKey]);
 
-  // Mouse drag for looking around
+  // Pointer lock controls — click to lock, mouse movement controls view
   useEffect(() => {
     if (!active) return;
     const s = stateRef.current;
 
-    const onDown = (e) => {
-      if (e.target.closest('.streetview-badge')) return;
-      s.dragging = true;
-      s.prevX = e.clientX;
-      s.prevY = e.clientY;
+    const onClick = () => {
+      const canvas = s.renderer?.domElement;
+      if (canvas && !document.pointerLockElement) {
+        canvas.requestPointerLock();
+      }
     };
-    const onMove = (e) => {
-      if (!s.dragging) return;
-      s.lon += (s.prevX - e.clientX) * 0.15;
-      s.lat += (e.clientY - s.prevY) * 0.15;
-      s.prevX = e.clientX;
-      s.prevY = e.clientY;
+
+    const onMouseMove = (e) => {
+      if (!s.renderer) return;
+      if (document.pointerLockElement !== s.renderer.domElement) return;
+      s.lon += e.movementX * 0.1;
+      s.lat -= e.movementY * 0.1;
     };
-    const onUp = () => { s.dragging = false; };
+
     const onResize = () => {
       if (!s.renderer || !s.camera) return;
       s.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -211,31 +199,24 @@ export default function StreetViewOverlay({ position, active }) {
     };
 
     const el = containerRef.current;
-    if (el) {
-      el.addEventListener('mousedown', onDown);
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', onUp);
-    }
+    if (el) el.addEventListener('click', onClick);
+    document.addEventListener('mousemove', onMouseMove);
     window.addEventListener('resize', onResize);
 
     return () => {
-      if (el) el.removeEventListener('mousedown', onDown);
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
+      if (el) el.removeEventListener('click', onClick);
+      document.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('resize', onResize);
+      if (document.pointerLockElement) document.exitPointerLock();
     };
   }, [active]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       const s = stateRef.current;
       stopRenderLoop();
       if (s.renderer) { s.renderer.dispose(); s.renderer = null; }
-      if (s.mesh) {
-        s.mesh.geometry.dispose();
-        s.mesh.material.dispose();
-      }
+      if (s.mesh) { s.mesh.geometry.dispose(); s.mesh.material.dispose(); }
       s.initialized = false;
     };
   }, []);
@@ -244,7 +225,7 @@ export default function StreetViewOverlay({ position, active }) {
 
   return (
     <div ref={containerRef} className={`streetview-overlay ${ready ? 'visible' : ''}`}>
-      <div className="streetview-badge">Street View</div>
+      <div className="streetview-badge">Street View — click to look around</div>
     </div>
   );
 }
