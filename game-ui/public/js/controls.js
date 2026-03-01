@@ -148,6 +148,7 @@ AFRAME.registerComponent('wasd-movement', {
   onWheel: function (e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (window._analyzerActive) return;
+    if (e.target.closest && e.target.closest('.chat-container')) return;
     e.preventDefault();
 
     var delta = e.deltaY;
