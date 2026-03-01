@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
-import { callMistral, callMistralVision, callMistralSchedule, isScheduleRequest, parseScheduleFromResponse, parseTeleportFromResponse } from '../services/mistral';
+import { callMistral, callMistralVision, callMistralVisionPinpoint, callMistralSchedule, isScheduleRequest, parseScheduleFromResponse, parseTeleportFromResponse } from '../services/mistral';
 import { getNearbyPlaces } from '../services/places';
 
 const AIChat = forwardRef(function AIChat({ position, gameMode, mission, onScheduleUpdate }, ref) {
@@ -9,6 +9,7 @@ const AIChat = forwardRef(function AIChat({ position, gameMode, mission, onSched
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const sendAnalysis = useCallback(async (imageDataUrl, coords) => {
     const targetLat = coords?.lat || position?.lat || 40.7608;
@@ -46,7 +47,51 @@ const AIChat = forwardRef(function AIChat({ position, gameMode, mission, onSched
     setIsLoading(false);
   }, [position, gameMode, mission]);
 
-  useImperativeHandle(ref, () => ({ sendAnalysis }), [sendAnalysis]);
+  const sendPhotoForLocation = useCallback(async (imageDataUrl) => {
+    setExpanded(true);
+    setMessages((prev) => [...prev, {
+      role: 'user',
+      text: 'Where is this? (uploaded photo to pinpoint location)',
+      image: imageDataUrl,
+    }]);
+    setIsLoading(true);
+
+    try {
+      const result = await callMistralVisionPinpoint(imageDataUrl);
+      setMessages((prev) => [...prev, { role: 'ai', text: result.message }]);
+
+      if (result.lat != null && result.lng != null && window.gameEngine) {
+        window.gameEngine.teleportTo(result.lat, result.lng);
+        setMessages((prev) => [...prev, { role: 'ai', text: `Taking you there! (${result.lat.toFixed(4)}, ${result.lng.toFixed(4)})` }]);
+      }
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'ai', text: "Sorry, I couldn't identify that location. Try a photo of a recognizable NYC spot." },
+      ]);
+    }
+
+    setIsLoading(false);
+  }, []);
+
+  const handleUploadPhoto = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = useCallback((e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !file.type.startsWith('image/')) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      if (dataUrl) sendPhotoForLocation(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  }, [sendPhotoForLocation]);
+
+  useImperativeHandle(ref, () => ({ sendAnalysis, sendPhotoForLocation }), [sendAnalysis, sendPhotoForLocation]);
 
   // Toggle chat with Tab key
   useEffect(() => {
@@ -177,11 +222,28 @@ const AIChat = forwardRef(function AIChat({ position, gameMode, mission, onSched
       )}
 
       <div className="chat-bottom-bar interactive">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="chat-upload-input"
+          onChange={handleFileChange}
+          aria-label="Upload photo to pinpoint location"
+        />
         {!expanded && (
           <button className="chat-expand-btn" onClick={() => setExpanded(true)} title="Open chat">
             &#9650;
           </button>
         )}
+        <button
+          type="button"
+          className="chat-upload-btn"
+          onClick={handleUploadPhoto}
+          disabled={isLoading}
+          title="Upload photo to pinpoint location"
+        >
+          &#128247;
+        </button>
         <input
           ref={inputRef}
           type="text"

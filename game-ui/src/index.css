@@ -577,6 +577,19 @@
   transform: none;
 }
 
+.chat-upload-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chat-upload-btn {
+  flex-shrink: 0;
+  font-size: 1.1rem;
+}
+
 /* ─── Minimap — bottom right ─── */
 .minimap {
   position: fixed;

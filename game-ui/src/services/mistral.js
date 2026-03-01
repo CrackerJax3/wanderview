@@ -182,6 +182,63 @@ The player used the Analyzer tool to capture a screenshot of something in the 3D
   }
 }
 
+const PINPOINT_SYSTEM = `You are a NYC expert. The user will send a photo of a place. Your job is to identify the location in Manhattan (preferably Hell's Kitchen: 34th–59th St, 8th Ave to Hudson River).
+
+Reply in two parts:
+1. One or two sentences describing what you see and where you think it is (e.g. "That's Restaurant Row on 46th St" or "This looks like the Intrepid area").
+2. If you can identify a specific location in Manhattan, add exactly one line: [TELEPORT]lat,lng[/TELEPORT] with decimal coordinates. Use real coordinates for real places, e.g. Times Square 40.758,-73.9855; Intrepid 40.7645,-74.0003; Restaurant Row 40.759,-73.9895; Hudson Yards 40.7536,-74.0022; Central Park South 40.7682,-73.9815. Stay within Manhattan bounds (lat 40.5–40.9, lng -74.05 to -73.9).
+
+If the photo is not a NYC/manhattan location or you cannot identify it, do not include [TELEPORT]. Just describe what you see.`;
+
+export async function callMistralVisionPinpoint(imageDataUrl) {
+  if (!apiKey) {
+    return { message: 'Set your Mistral API key to pinpoint location from a photo.', lat: null, lng: null };
+  }
+
+  try {
+    const response = await fetch(MISTRAL_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'pixtral-large-latest',
+        messages: [
+          { role: 'system', content: PINPOINT_SYSTEM },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Where is this? Identify the location and, if it\'s in Manhattan, include [TELEPORT]lat,lng[/TELEPORT] with coordinates.' },
+              { type: 'image_url', image_url: { url: imageDataUrl } },
+            ],
+          },
+        ],
+        max_tokens: 400,
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('Mistral Vision Pinpoint API error:', response.status, errText);
+      return { message: "I couldn't identify that location. Try a clearer photo of a NYC spot.", lat: null, lng: null };
+    }
+
+    const data = await response.json();
+    const raw = data.choices[0]?.message?.content || "I'm not sure where that is.";
+    const parsed = parseTeleportFromResponse(raw);
+    return {
+      message: parsed.message || raw,
+      lat: parsed.lat,
+      lng: parsed.lng,
+    };
+  } catch (err) {
+    console.error('Mistral Vision Pinpoint failed:', err);
+    return { message: "Something went wrong. Try again.", lat: null, lng: null };
+  }
+}
+
 export async function callMistral(userMessage, context = {}) {
   if (!apiKey) {
     return getMockResponse(userMessage, context);
