@@ -96,6 +96,7 @@ export default function StreetViewOverlay({ position, active }) {
 
     s.scene = new THREE.Scene();
     s.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
+    window._streetViewCamera = s.camera;
 
     const geo = new THREE.SphereGeometry(500, 60, 40);
     geo.scale(-1, 1, 1);

@@ -113,14 +113,26 @@ export default function ScreenAnalyzer({ active, onCapture, onCancel }) {
     const dataUrl = tempCanvas.toDataURL('image/png');
 
     let coords = null;
-    if (!useStreetView) {
-      try {
-        const sceneEl = document.querySelector('a-scene');
-        const centerX = (rect.x + rect.width / 2) / window.innerWidth * 2 - 1;
-        const centerY = -((rect.y + rect.height / 2) / window.innerHeight * 2 - 1);
+    try {
+      const sceneEl = document.querySelector('a-scene');
+      const centerX = (rect.x + rect.width / 2) / window.innerWidth * 2 - 1;
+      const centerY = -((rect.y + rect.height / 2) / window.innerHeight * 2 - 1);
+      const raycaster = new THREE.Raycaster();
 
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera({ x: centerX, y: centerY }, sceneEl.camera);
+      if (useStreetView && window._streetViewCamera && sceneEl) {
+        raycaster.setFromCamera({ x: centerX, y: centerY }, window._streetViewCamera);
+
+        // Convert ray direction from street view coords to A-Frame coords
+        // SV: north=+X, east=+Z, up=+Y → A-Frame: north=-Z, east=+X, up=+Y
+        const svDir = raycaster.ray.direction.clone();
+        raycaster.ray.direction.set(svDir.z, svDir.y, -svDir.x).normalize();
+
+        // Origin is the player's position in the A-Frame scene
+        const rig = document.getElementById('player-rig');
+        if (rig) {
+          const rigPos = rig.object3D.position;
+          raycaster.ray.origin.set(rigPos.x, rigPos.y + 1.6, rigPos.z);
+        }
 
         const intersects = raycaster.intersectObjects(sceneEl.object3D.children, true);
         if (intersects.length > 0 && window.gameEngine) {
@@ -128,9 +140,17 @@ export default function ScreenAnalyzer({ active, onCapture, onCancel }) {
           const latLng = window.gameEngine.sceneToLatLng(point.x, point.z);
           coords = { lat: latLng.lat, lng: latLng.lng };
         }
-      } catch (e) {
-        console.warn('[Analyzer] Raycast failed:', e.message);
+      } else if (sceneEl) {
+        raycaster.setFromCamera({ x: centerX, y: centerY }, sceneEl.camera);
+        const intersects = raycaster.intersectObjects(sceneEl.object3D.children, true);
+        if (intersects.length > 0 && window.gameEngine) {
+          const point = intersects[0].point;
+          const latLng = window.gameEngine.sceneToLatLng(point.x, point.z);
+          coords = { lat: latLng.lat, lng: latLng.lng };
+        }
       }
+    } catch (e) {
+      console.warn('[Analyzer] Raycast failed:', e.message);
     }
 
     if (!coords && window.gameEngine) {
