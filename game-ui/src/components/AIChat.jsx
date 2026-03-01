@@ -83,26 +83,39 @@ export default function AIChat({ position, gameMode, mission }) {
 
   return (
     <div className={`chat-container ${expanded ? 'expanded' : ''}`}>
-      <div className="chat-messages">
-        {messages.length === 0 && expanded && (
-          <div className="chat-message ai">
-            Welcome to WanderView! Ask me anything about the neighborhood, or just keep walking.
+      {expanded && (
+        <>
+          <div className="chat-header interactive" onClick={() => setExpanded(false)}>
+            <span>Game Master Chat</span>
+            <span className="chat-collapse-icon">&#9660;</span>
           </div>
-        )}
-        {messages.map((msg, i) => (
-          <div key={i} className={`chat-message ${msg.role}`}>
-            {msg.text}
+          <div className="chat-messages">
+            {messages.length === 0 && (
+              <div className="chat-message ai">
+                Welcome to WanderView! Ask me anything about the neighborhood, or just keep walking.
+              </div>
+            )}
+            {messages.map((msg, i) => (
+              <div key={i} className={`chat-message ${msg.role}`}>
+                {msg.text}
+              </div>
+            ))}
+            {isLoading && (
+              <div className="chat-message ai" style={{ opacity: 0.5 }}>
+                Thinking...
+              </div>
+            )}
+            <div ref={messagesEndRef} />
           </div>
-        ))}
-        {isLoading && (
-          <div className="chat-message ai" style={{ opacity: 0.5 }}>
-            Thinking...
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+        </>
+      )}
 
       <div className="chat-bottom-bar interactive">
+        {!expanded && (
+          <button className="chat-expand-btn" onClick={() => setExpanded(true)} title="Open chat">
+            &#9650;
+          </button>
+        )}
         <input
           ref={inputRef}
           type="text"
