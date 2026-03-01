@@ -203,7 +203,9 @@ a-scene {
 #game-ui .mode-selector,
 #game-ui .api-key-prompt,
 #game-ui .analyzer-overlay,
-#game-ui .analyzer-overlay * {
+#game-ui .analyzer-overlay *,
+#game-ui .streetview-overlay,
+#game-ui .streetview-overlay * {
   pointer-events: auto;
 }
 

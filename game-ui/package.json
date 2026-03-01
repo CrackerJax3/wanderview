@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "360-image-viewer": "^1.0.1",
     "aframe-loader-3dtiles-component": "^1.0.6",
+    "canvas-fit": "^1.5.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
