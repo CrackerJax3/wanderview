@@ -71,7 +71,19 @@ function drawPlayerArrow(ctx, cx, cy, headingDeg) {
   ctx.restore();
 }
 
-export default function HUD({ position, gameMode, score, onAnalyze }) {
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const match = String(timeStr).match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/i);
+  if (!match) return 0;
+  let hours = parseInt(match[1], 10);
+  const mins = parseInt(match[2] || '0', 10);
+  const period = (match[3] || '').toLowerCase();
+  if (period === 'pm' && hours < 12) hours += 12;
+  if (period === 'am' && hours === 12) hours = 0;
+  return hours * 60 + mins;
+}
+
+export default function HUD({ position, gameMode, score, onAnalyze, schedule = [] }) {
   const [street, setStreet] = useState({ street: '46th St', avenue: '9th Ave' });
   const [landmarks, setLandmarks] = useState([]);
   const [showMinimap, setShowMinimap] = useState(true);
@@ -79,6 +91,11 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
   const [viewHeight, setViewHeight] = useState(-15);
   const canvasRef = useRef(null);
   const heading = position?.heading || 0;
+
+  const scheduleRoute = React.useMemo(() => {
+    const list = schedule.filter((i) => i.status === 'confirmed' && i.lat != null && i.lng != null);
+    return [...list].sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
+  }, [schedule]);
 
   const HEIGHT_MIN = -30;
   const HEIGHT_MAX = 80;
@@ -198,11 +215,57 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
       });
     }
 
+    // Draw schedule route (confirmed destinations with lat/lng, in time order)
+    const route = scheduleRoute || [];
+    if (route.length >= 2) {
+      const points = route.map((p) => {
+        const rt = latLngToTile(p.lat, p.lng, MINIMAP_ZOOM);
+        return {
+          x: centerX + (rt.x - tilePos.x) * TILE_SIZE,
+          y: centerY + (rt.y - tilePos.y) * TILE_SIZE,
+        };
+      });
+      ctx.strokeStyle = '#007AFF';
+      ctx.lineWidth = 4;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.stroke();
+      points.forEach((pt, i) => {
+        if (pt.x > 5 && pt.x < logicalSize - 5 && pt.y > 5 && pt.y < logicalSize - 5) {
+          ctx.fillStyle = '#007AFF';
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      });
+    } else if (route.length === 1) {
+      const rt = latLngToTile(route[0].lat, route[0].lng, MINIMAP_ZOOM);
+      const lx = centerX + (rt.x - tilePos.x) * TILE_SIZE;
+      const ly = centerY + (rt.y - tilePos.y) * TILE_SIZE;
+      if (lx > 5 && lx < logicalSize - 5 && ly > 5 && ly < logicalSize - 5) {
+        ctx.fillStyle = '#007AFF';
+        ctx.beginPath();
+        ctx.arc(lx, ly, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
     // Draw player arrow with heading (offset northwest to align with tile position)
     drawPlayerArrow(ctx, centerX - 6, centerY - 6, heading);
 
     ctx.restore();
-  }, [position, tilesLoaded]);
+  }, [position, tilesLoaded, scheduleRoute]);
 
   useEffect(() => {
     drawMinimap();

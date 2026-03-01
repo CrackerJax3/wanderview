@@ -186,6 +186,7 @@ export default function App() {
             gameMode={gameMode}
             score={score}
             onAnalyze={() => setAnalyzing(true)}
+            schedule={schedule}
           />
 
           <div className="right-sidebar">

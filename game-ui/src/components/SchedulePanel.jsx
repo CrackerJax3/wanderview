@@ -43,7 +43,7 @@ export default function SchedulePanel({ items, onAccept, onDecline, onClear }) {
   const hasItems = sorted.length > 0;
 
   const totalBudgetPerPerson = hasItems
-    ? sorted.reduce((sum, item) => sum + priceToEstimate(item.pricePerPerson), 0)
+    ? sorted.reduce((sum, item) => sum + (typeof item.priceAmount === 'number' && !Number.isNaN(item.priceAmount) ? item.priceAmount : priceToEstimate(item.pricePerPerson)), 0)
     : 0;
 
   const totalTimeMinutes = hasItems && sorted.length > 0
@@ -83,9 +83,13 @@ export default function SchedulePanel({ items, onAccept, onDecline, onClear }) {
                       {item.location && (
                         <div className="schedule-item-location">{item.location}</div>
                       )}
-                      {item.pricePerPerson && (
-                        <div className="schedule-item-price">Per person: {item.pricePerPerson}</div>
-                      )}
+                      {(item.pricePerPerson != null && item.pricePerPerson !== '') || (item.priceAmount != null && item.priceAmount !== '') ? (
+                        <div className="schedule-item-price">
+                          Per person: {typeof item.priceAmount === 'number' && !Number.isNaN(item.priceAmount)
+                            ? (item.priceAmount === 0 ? 'Free' : `$${item.priceAmount}`)
+                            : item.pricePerPerson}
+                        </div>
+                      ) : null}
                       {item.status === 'suggested' && (
                         <div className="schedule-item-actions interactive">
                           <button
@@ -111,12 +115,18 @@ export default function SchedulePanel({ items, onAccept, onDecline, onClear }) {
                   </div>
                 ))}
               </div>
-              {hasItems && (totalBudgetPerPerson > 0 || totalTimeLabel) && (
+              {hasItems && (
                 <div className="schedule-totals">
                   {totalBudgetPerPerson > 0 && (
                     <div className="schedule-total-row">
                       <span>Budget (per person)</span>
-                      <strong>~${totalBudgetPerPerson}</strong>
+                      <strong>${totalBudgetPerPerson}</strong>
+                    </div>
+                  )}
+                  {totalBudgetPerPerson === 0 && hasItems && (
+                    <div className="schedule-total-row">
+                      <span>Budget (per person)</span>
+                      <strong>Free</strong>
                     </div>
                   )}
                   {totalTimeLabel && (
