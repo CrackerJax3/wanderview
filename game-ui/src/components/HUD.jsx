@@ -129,10 +129,11 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
     return () => window.removeEventListener('toggleMinimap', handler);
   }, []);
 
-  // Draw minimap
-  const drawMinimap = useCallback(() => {
+  // Draw minimap (accepts optional pos for real-time updates; uses position prop if not provided)
+  const drawMinimap = useCallback((posOverride) => {
     const canvas = canvasRef.current;
-    if (!canvas || !position) return;
+    const pos = posOverride || position;
+    if (!canvas || !pos) return;
 
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
@@ -141,6 +142,7 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
     const logicalSize = 3 * TILE_SIZE;
     const centerX = logicalSize / 2;
     const centerY = logicalSize / 2;
+    const heading = pos.heading != null ? pos.heading : (position?.heading ?? 0);
 
     ctx.save();
     ctx.scale(scale, scale);
@@ -149,7 +151,7 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
     ctx.fillRect(0, 0, logicalSize, logicalSize);
 
     // Calculate tile position for player
-    const tilePos = latLngToTile(position.lat, position.lng, MINIMAP_ZOOM);
+    const tilePos = latLngToTile(pos.lat, pos.lng, MINIMAP_ZOOM);
     const tileX = Math.floor(tilePos.x);
     const tileY = Math.floor(tilePos.y);
     const fracX = tilePos.x - tileX;
@@ -200,11 +202,24 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
     drawPlayerArrow(ctx, centerX - 6, centerY - 6, heading);
 
     ctx.restore();
-  }, [position, heading, tilesLoaded]);
+  }, [position, tilesLoaded]);
 
   useEffect(() => {
     drawMinimap();
   }, [drawMinimap]);
+
+  // Real-time minimap: redraw every frame with latest heading from game engine so arrow turns smoothly
+  useEffect(() => {
+    let rafId;
+    function tick() {
+      rafId = requestAnimationFrame(tick);
+      const pos = window.gameEngine?.getPosition();
+      if (!pos || !canvasRef.current || !showMinimap) return;
+      drawMinimap(pos);
+    }
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [drawMinimap, showMinimap]);
 
   const compassDirection = window.gameNavigation?.getCompassDirection(heading) || 'N';
 

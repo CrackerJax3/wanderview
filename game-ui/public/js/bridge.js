@@ -55,23 +55,26 @@
     updatePosition: function (lat, lng, heading) {
       const prev = { ...currentPosition };
       currentPosition = { lat, lng, heading };
-      // Notify listeners if position changed meaningfully
-      const dist = Math.sqrt(
-        Math.pow((lat - prev.lat) * METERS_PER_DEG_LAT, 2) +
-        Math.pow((lng - prev.lng) * METERS_PER_DEG_LNG, 2)
-      );
-      if (dist > 0.5 || Math.abs(heading - prev.heading) > 1) {
-        positionCallbacks.forEach(function (cb) {
-          try { cb(currentPosition); } catch (e) { console.error('Position callback error:', e); }
-        });
-      }
+    // Notify listeners if position or heading changed (small threshold so minimap arrow updates in real time)
+    const dist = Math.sqrt(
+      Math.pow((lat - prev.lat) * METERS_PER_DEG_LAT, 2) +
+      Math.pow((lng - prev.lng) * METERS_PER_DEG_LNG, 2)
+    );
+    const headingDelta = Math.abs(heading - prev.heading);
+    const headingWrap = Math.min(headingDelta, 360 - headingDelta);
+    if (dist > 0.5 || headingWrap > 0.01) {
+      positionCallbacks.forEach(function (cb) {
+        try { cb(currentPosition); } catch (e) { console.error('Position callback error:', e); }
+      });
+    }
     },
 
-    // Teleport player to a lat/lng
+    // Teleport player to a lat/lng (same coordinate system as 2D minimap: WGS84 → local tangent plane at origin)
     teleportTo: function (lat, lng) {
       const scene = latLngToScene(lat, lng);
       const rig = document.getElementById('player-rig');
       if (rig) {
+        rig.object3D.position.set(scene.x, 0, scene.z);
         rig.setAttribute('position', { x: scene.x, y: 0, z: scene.z });
       }
       currentPosition.lat = lat;
