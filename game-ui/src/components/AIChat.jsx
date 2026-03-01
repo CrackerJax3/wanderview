@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
-import { callMistral, callMistralVision, callMistralSchedule, isScheduleRequest, parseScheduleFromResponse } from '../services/mistral';
+import { callMistral, callMistralVision, callMistralSchedule, isScheduleRequest, parseScheduleFromResponse, parseTeleportFromResponse } from '../services/mistral';
 import { getNearbyPlaces } from '../services/places';
 
 const AIChat = forwardRef(function AIChat({ position, gameMode, mission, onScheduleUpdate }, ref) {
@@ -112,6 +112,14 @@ const AIChat = forwardRef(function AIChat({ position, gameMode, mission, onSched
         const parsed = parseScheduleFromResponse(rawReply);
         reply = parsed.message;
         schedule = parsed.schedule;
+      }
+
+      const teleportParsed = parseTeleportFromResponse(reply);
+      if (teleportParsed.lat != null && teleportParsed.lng != null && window.gameEngine) {
+        window.gameEngine.teleportTo(teleportParsed.lat, teleportParsed.lng);
+        reply = teleportParsed.message || reply;
+      } else if (teleportParsed.message) {
+        reply = teleportParsed.message;
       }
 
       setMessages((prev) => [...prev, { role: 'ai', text: reply }]);

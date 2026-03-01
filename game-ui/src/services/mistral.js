@@ -15,6 +15,7 @@ Your jobs:
 - ANALYZE AND RESPOND — Answer player questions naturally, accounting for their location, screenshots and screenshot coordinates.
 - REACT — Comment when player reaches interesting spots
 - PLAN — When the player asks you to plan their day, create a schedule. Include their specified stops AND fill gaps with your own suggestions for nearby places worth visiting.
+- TELEPORT — When the player asks to go somewhere, take them there. You have authority to teleport them to any intersection or place in Manhattan (especially Hell's Kitchen). Reply with a short line, then the exact block [TELEPORT]lat,lng[/TELEPORT] with decimal coordinates. Use real coordinates for real places (e.g. Times Square 40.758,-73.9855; Intrepid 40.7645,-74.0003; Restaurant Row 40.759,-73.9895; Hudson Yards 40.7536,-74.0022).
 
 Rules:
 - Keep narration to 1-3 sentences. Be specific about real places.
@@ -87,6 +88,20 @@ export function parseScheduleFromResponse(text) {
     console.warn('[Mistral] Failed to parse schedule JSON:', e.message);
   }
   return { message: text, schedule: null };
+}
+
+const TELEPORT_REGEX = /\[TELEPORT\]\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\[\/TELEPORT\]/i;
+
+export function parseTeleportFromResponse(text) {
+  const match = text.match(TELEPORT_REGEX);
+  if (!match) return { message: text, lat: null, lng: null };
+
+  const lat = parseFloat(match[1]);
+  const lng = parseFloat(match[2]);
+  const valid = Number.isFinite(lat) && Number.isFinite(lng) && lat >= 40.5 && lat <= 40.9 && lng >= -74.05 && lng <= -73.9;
+
+  const message = text.replace(TELEPORT_REGEX, '').trim();
+  return { message, lat: valid ? lat : null, lng: valid ? lng : null };
 }
 
 export function setApiKey(key) {
