@@ -1,15 +1,9 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import create360Viewer from '360-image-viewer';
-import canvasFit from 'canvas-fit';
 
 const SV_STATIC = 'https://maps.googleapis.com/maps/api/streetview';
 const SLICES = 12;
 const SLICE_FOV = 30;
 const IMG_SIZE = 640;
-
-function headingToPhi(deg) {
-  return ((deg) * Math.PI) / 180;
-}
 
 function buildPanorama(lat, lng, apiKey) {
   return new Promise((resolve) => {
@@ -34,10 +28,13 @@ function buildPanorama(lat, lng, apiKey) {
       const idx = i;
       img.onload = () => {
         ctx.drawImage(img, idx * IMG_SIZE, bandY, IMG_SIZE, IMG_SIZE);
-        if (++loaded >= SLICES) resolve(canvas);
+        loaded++;
+        if (loaded >= SLICES) resolve(canvas);
       };
       img.onerror = () => {
-        if (++loaded >= SLICES) resolve(canvas);
+        console.warn(`[StreetView] Failed to load slice ${idx}`);
+        loaded++;
+        if (loaded >= SLICES) resolve(canvas);
       };
     }
   });
@@ -45,8 +42,19 @@ function buildPanorama(lat, lng, apiKey) {
 
 export default function StreetViewOverlay({ position, active }) {
   const containerRef = useRef(null);
-  const viewerRef = useRef(null);
-  const fitFnRef = useRef(null);
+  const stateRef = useRef({
+    renderer: null,
+    scene: null,
+    camera: null,
+    mesh: null,
+    raf: null,
+    dragging: false,
+    prevX: 0,
+    prevY: 0,
+    lon: 0,
+    lat: 0,
+    initialized: false,
+  });
   const locKeyRef = useRef('');
   const [ready, setReady] = useState(false);
 
@@ -54,69 +62,120 @@ export default function StreetViewOverlay({ position, active }) {
     return window.WANDERVIEW_GOOGLE_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY || '';
   }, []);
 
+  function initThreeScene() {
+    const s = stateRef.current;
+    if (s.initialized) return;
+    const THREE = window.THREE;
+    if (!THREE) { console.error('[StreetView] THREE not found'); return; }
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    s.renderer = renderer;
+
+    const scene = new THREE.Scene();
+    s.scene = scene;
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
+    s.camera = camera;
+
+    const geo = new THREE.SphereGeometry(500, 60, 40);
+    geo.scale(-1, 1, 1);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const mesh = new THREE.Mesh(geo, mat);
+    scene.add(mesh);
+    s.mesh = mesh;
+    s.initialized = true;
+  }
+
+  function startRenderLoop() {
+    const s = stateRef.current;
+    if (!s.renderer || !s.scene || !s.camera) return;
+
+    const container = containerRef.current;
+    if (container && !container.contains(s.renderer.domElement)) {
+      container.insertBefore(s.renderer.domElement, container.firstChild);
+    }
+
+    s.renderer.setSize(window.innerWidth, window.innerHeight);
+    s.camera.aspect = window.innerWidth / window.innerHeight;
+    s.camera.updateProjectionMatrix();
+
+    if (s.raf) cancelAnimationFrame(s.raf);
+
+    function animate() {
+      s.raf = requestAnimationFrame(animate);
+      const clampedLat = Math.max(-85, Math.min(85, s.lat));
+      const phi = window.THREE.MathUtils.degToRad(90 - clampedLat);
+      const theta = window.THREE.MathUtils.degToRad(s.lon);
+      s.camera.lookAt(
+        500 * Math.sin(phi) * Math.cos(theta),
+        500 * Math.cos(phi),
+        500 * Math.sin(phi) * Math.sin(theta)
+      );
+      s.renderer.render(s.scene, s.camera);
+    }
+    animate();
+  }
+
+  function stopRenderLoop() {
+    const s = stateRef.current;
+    if (s.raf) { cancelAnimationFrame(s.raf); s.raf = null; }
+  }
+
   useEffect(() => {
     window._streetViewActive = !!active;
 
     if (!active || !position) {
       setReady(false);
-      if (viewerRef.current) viewerRef.current.stop();
+      stopRenderLoop();
       return;
     }
 
     const apiKey = getApiKey();
-    if (!apiKey) return;
+    if (!apiKey) { console.warn('[StreetView] No API key'); return; }
+
+    initThreeScene();
 
     const lat = position.lat?.toFixed(4);
     const lng = position.lng?.toFixed(4);
     const locKey = `${lat},${lng}`;
 
-    if (locKey === locKeyRef.current && viewerRef.current) {
-      viewerRef.current.phi = headingToPhi(position.heading || 0);
-      viewerRef.current.start();
-      if (fitFnRef.current) fitFnRef.current();
+    if (document.pointerLockElement) document.exitPointerLock();
+
+    const heading = position.heading || 0;
+    stateRef.current.lon = heading;
+    stateRef.current.lat = 0;
+
+    if (locKey === locKeyRef.current) {
+      startRenderLoop();
       setReady(true);
       return;
     }
     locKeyRef.current = locKey;
 
-    if (document.pointerLockElement) document.exitPointerLock();
-
     let cancelled = false;
 
     (async () => {
       try {
+        console.log('[StreetView] Loading panorama for', lat, lng);
         const panoCanvas = await buildPanorama(lat, lng, apiKey);
         if (cancelled) return;
 
-        if (viewerRef.current) {
-          viewerRef.current.texture(panoCanvas);
-          viewerRef.current.phi = headingToPhi(position.heading || 0);
-          viewerRef.current.start();
-          setReady(true);
-          return;
+        console.log('[StreetView] Panorama stitched, creating texture');
+        const THREE = window.THREE;
+        const texture = new THREE.CanvasTexture(panoCanvas);
+        if (THREE.SRGBColorSpace) texture.colorSpace = THREE.SRGBColorSpace;
+
+        const s = stateRef.current;
+        if (s.mesh) {
+          s.mesh.material.dispose();
+          s.mesh.material = new THREE.MeshBasicMaterial({ map: texture });
         }
 
-        const viewer = create360Viewer({
-          image: panoCanvas,
-          fov: Math.PI / 2,
-          rotateSpeed: -0.15,
-          damping: 0.275,
-        });
-
-        viewer.phi = headingToPhi(position.heading || 0);
-
-        const container = containerRef.current;
-        if (container && !cancelled) {
-          container.appendChild(viewer.canvas);
-          const fit = canvasFit(viewer.canvas, window, window.devicePixelRatio);
-          fitFnRef.current = fit;
-          window.addEventListener('resize', fit);
-          fit();
-        }
-
-        viewer.start();
-        viewerRef.current = viewer;
+        startRenderLoop();
         setReady(true);
+        console.log('[StreetView] Rendering started');
       } catch (err) {
         console.error('[StreetView] Error:', err);
       }
@@ -125,15 +184,59 @@ export default function StreetViewOverlay({ position, active }) {
     return () => { cancelled = true; };
   }, [position?.lat, position?.lng, active, getApiKey]);
 
+  // Mouse drag for looking around
+  useEffect(() => {
+    if (!active) return;
+    const s = stateRef.current;
+
+    const onDown = (e) => {
+      if (e.target.closest('.streetview-badge')) return;
+      s.dragging = true;
+      s.prevX = e.clientX;
+      s.prevY = e.clientY;
+    };
+    const onMove = (e) => {
+      if (!s.dragging) return;
+      s.lon += (s.prevX - e.clientX) * 0.15;
+      s.lat += (e.clientY - s.prevY) * 0.15;
+      s.prevX = e.clientX;
+      s.prevY = e.clientY;
+    };
+    const onUp = () => { s.dragging = false; };
+    const onResize = () => {
+      if (!s.renderer || !s.camera) return;
+      s.renderer.setSize(window.innerWidth, window.innerHeight);
+      s.camera.aspect = window.innerWidth / window.innerHeight;
+      s.camera.updateProjectionMatrix();
+    };
+
+    const el = containerRef.current;
+    if (el) {
+      el.addEventListener('mousedown', onDown);
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    }
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      if (el) el.removeEventListener('mousedown', onDown);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [active]);
+
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (viewerRef.current) {
-        viewerRef.current.destroy();
-        viewerRef.current = null;
+      const s = stateRef.current;
+      stopRenderLoop();
+      if (s.renderer) { s.renderer.dispose(); s.renderer = null; }
+      if (s.mesh) {
+        s.mesh.geometry.dispose();
+        s.mesh.material.dispose();
       }
-      if (fitFnRef.current) {
-        window.removeEventListener('resize', fitFnRef.current);
-      }
+      s.initialized = false;
     };
   }, []);
 
