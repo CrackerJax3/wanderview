@@ -42,7 +42,7 @@ AFRAME.registerComponent('fps-look-controls', {
   },
 
   onClick: function () {
-    if (!this.isLocked) {
+    if (!this.isLocked && !window._analyzerActive) {
       const canvas = this.el.sceneEl.canvas;
       if (canvas && canvas.requestPointerLock) {
         canvas.requestPointerLock();

@@ -8,20 +8,35 @@ export default function ScreenAnalyzer({ active, onCapture, onCancel }) {
 
   useEffect(() => {
     if (active) {
-      document.exitPointerLock?.();
+      window._analyzerActive = true;
+      if (document.pointerLockElement) {
+        document.exitPointerLock();
+      }
+    } else {
+      window._analyzerActive = false;
+      setDrawing(false);
+      setStart(null);
+      setEnd(null);
     }
+    return () => { window._analyzerActive = false; };
   }, [active]);
 
   useEffect(() => {
     if (!active) return;
     const handler = (e) => {
-      if (e.key === 'Escape') onCancel();
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        e.preventDefault();
+        onCancel();
+      }
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
   }, [active, onCancel]);
 
   const handleMouseDown = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
     setDrawing(true);
     setStart({ x: e.clientX, y: e.clientY });
     setEnd({ x: e.clientX, y: e.clientY });
@@ -29,11 +44,14 @@ export default function ScreenAnalyzer({ active, onCapture, onCancel }) {
 
   const handleMouseMove = useCallback((e) => {
     if (!drawing) return;
+    e.preventDefault();
     setEnd({ x: e.clientX, y: e.clientY });
   }, [drawing]);
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((e) => {
     if (!drawing || !start || !end) return;
+    e.preventDefault();
+    e.stopPropagation();
     setDrawing(false);
 
     const rect = {
