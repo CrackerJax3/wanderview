@@ -2,43 +2,43 @@ import React, { useEffect, useRef, useCallback, useState } from 'react';
 import create360Viewer from '360-image-viewer';
 import canvasFit from 'canvas-fit';
 
-const PANO_ZOOM = 3;
-const PANO_COLS = 8;
-const PANO_ROWS = 4;
-const TILE_PX = 512;
-
-function getPanoTileUrl(panoId, x, y, zoom) {
-  return `https://streetviewpixels-pa.googleapis.com/v1/tile?cb_client=maps_sv.tactile&panoid=${encodeURIComponent(panoId)}&x=${x}&y=${y}&zoom=${zoom}&nbt=1&fover=2`;
-}
+const SV_STATIC = 'https://maps.googleapis.com/maps/api/streetview';
+const SLICES = 12;
+const SLICE_FOV = 30;
+const IMG_SIZE = 640;
 
 function headingToPhi(deg) {
-  return ((-deg * Math.PI) / 180) + Math.PI;
+  return ((deg) * Math.PI) / 180;
 }
 
-function stitchPanorama(panoId) {
+function buildPanorama(lat, lng, apiKey) {
   return new Promise((resolve) => {
+    const panoW = SLICES * IMG_SIZE;
+    const panoH = panoW / 2;
     const canvas = document.createElement('canvas');
-    canvas.width = PANO_COLS * TILE_PX;
-    canvas.height = PANO_ROWS * TILE_PX;
+    canvas.width = panoW;
+    canvas.height = panoH;
     const ctx = canvas.getContext('2d');
 
-    let done = 0;
-    const total = PANO_COLS * PANO_ROWS;
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, panoW, panoH);
 
-    for (let y = 0; y < PANO_ROWS; y++) {
-      for (let x = 0; x < PANO_COLS; x++) {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = getPanoTileUrl(panoId, x, y, PANO_ZOOM);
-        const cx = x, cy = y;
-        img.onload = () => {
-          ctx.drawImage(img, cx * TILE_PX, cy * TILE_PX);
-          if (++done >= total) resolve(canvas);
-        };
-        img.onerror = () => {
-          if (++done >= total) resolve(canvas);
-        };
-      }
+    let loaded = 0;
+    const bandY = Math.round((panoH - IMG_SIZE) / 2);
+
+    for (let i = 0; i < SLICES; i++) {
+      const heading = i * SLICE_FOV;
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = `${SV_STATIC}?size=${IMG_SIZE}x${IMG_SIZE}&location=${lat},${lng}&heading=${heading}&pitch=0&fov=${SLICE_FOV}&key=${apiKey}`;
+      const idx = i;
+      img.onload = () => {
+        ctx.drawImage(img, idx * IMG_SIZE, bandY, IMG_SIZE, IMG_SIZE);
+        if (++loaded >= SLICES) resolve(canvas);
+      };
+      img.onerror = () => {
+        if (++loaded >= SLICES) resolve(canvas);
+      };
     }
   });
 }
@@ -55,7 +55,8 @@ export default function StreetViewOverlay({ position, active }) {
   }, []);
 
   useEffect(() => {
-    window._streetViewActive = active;
+    window._streetViewActive = !!active;
+
     if (!active || !position) {
       setReady(false);
       if (viewerRef.current) viewerRef.current.stop();
@@ -72,6 +73,7 @@ export default function StreetViewOverlay({ position, active }) {
     if (locKey === locKeyRef.current && viewerRef.current) {
       viewerRef.current.phi = headingToPhi(position.heading || 0);
       viewerRef.current.start();
+      if (fitFnRef.current) fitFnRef.current();
       setReady(true);
       return;
     }
@@ -83,13 +85,7 @@ export default function StreetViewOverlay({ position, active }) {
 
     (async () => {
       try {
-        const res = await fetch(
-          `https://maps.googleapis.com/maps/api/streetview/metadata?location=${lat},${lng}&key=${apiKey}`
-        );
-        const meta = await res.json();
-        if (cancelled || meta.status !== 'OK' || !meta.pano_id) return;
-
-        const panoCanvas = await stitchPanorama(meta.pano_id);
+        const panoCanvas = await buildPanorama(lat, lng, apiKey);
         if (cancelled) return;
 
         if (viewerRef.current) {
@@ -102,8 +98,8 @@ export default function StreetViewOverlay({ position, active }) {
 
         const viewer = create360Viewer({
           image: panoCanvas,
-          fov: Math.PI / 2.5,
-          rotateSpeed: -0.3,
+          fov: Math.PI / 2,
+          rotateSpeed: -0.15,
           damping: 0.275,
         });
 
