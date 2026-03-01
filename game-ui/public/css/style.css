@@ -201,7 +201,9 @@ a-scene {
 #game-ui .chat-container *,
 #game-ui .mission-panel,
 #game-ui .mode-selector,
-#game-ui .api-key-prompt {
+#game-ui .api-key-prompt,
+#game-ui .analyzer-overlay,
+#game-ui .analyzer-overlay * {
   pointer-events: auto;
 }
 
