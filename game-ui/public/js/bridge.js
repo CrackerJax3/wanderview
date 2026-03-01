@@ -60,7 +60,7 @@
         Math.pow((lat - prev.lat) * METERS_PER_DEG_LAT, 2) +
         Math.pow((lng - prev.lng) * METERS_PER_DEG_LNG, 2)
       );
-      if (dist > 0.5 || Math.abs(heading - prev.heading) > 5) {
+      if (dist > 0.5 || Math.abs(heading - prev.heading) > 1) {
         positionCallbacks.forEach(function (cb) {
           try { cb(currentPosition); } catch (e) { console.error('Position callback error:', e); }
         });

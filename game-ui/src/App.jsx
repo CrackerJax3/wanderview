@@ -185,6 +185,8 @@ export default function App() {
           {showControls && (
             <div className="controls-hint">
               <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move &nbsp;|&nbsp;
+              <kbd>Q</kbd><kbd>E</kbd> Down/Up &nbsp;|&nbsp;
+              <kbd>Scroll</kbd> Zoom &nbsp;|&nbsp;
               <kbd>Mouse</kbd> Look &nbsp;|&nbsp;
               <kbd>Shift</kbd> Sprint &nbsp;|&nbsp;
               <kbd>Tab</kbd> Chat &nbsp;|&nbsp;

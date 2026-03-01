@@ -1,24 +1,81 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 const BADGE_COLORS = ['red', 'green', 'blue', 'orange', 'purple'];
+const TILE_SIZE = 256;
+const MINIMAP_ZOOM = 17;
+const tileCache = {};
 
 function formatDistance(meters) {
   if (meters >= 1000) return `${(meters / 1000).toFixed(1)}km`;
   return `${Math.round(meters)}m`;
 }
 
+function latLngToTile(lat, lng, zoom) {
+  const n = Math.pow(2, zoom);
+  const x = ((lng + 180) / 360) * n;
+  const latRad = (lat * Math.PI) / 180;
+  const y = ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n;
+  return { x, y };
+}
+
+function loadTile(tx, ty, zoom) {
+  const key = `${zoom}/${tx}/${ty}`;
+  if (tileCache[key]) return tileCache[key];
+
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.src = `https://tile.openstreetmap.org/${zoom}/${tx}/${ty}.png`;
+
+  const promise = new Promise((resolve) => {
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+  });
+
+  tileCache[key] = { img, ready: false, promise };
+  promise.then((loaded) => {
+    if (loaded) tileCache[key].ready = true;
+  });
+
+  return tileCache[key];
+}
+
+function drawPlayerArrow(ctx, cx, cy, headingDeg) {
+  const rad = (headingDeg * Math.PI) / 180;
+  const size = 10;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rad);
+
+  // Arrow body
+  ctx.beginPath();
+  ctx.moveTo(0, -size);
+  ctx.lineTo(-size * 0.6, size * 0.6);
+  ctx.lineTo(0, size * 0.2);
+  ctx.lineTo(size * 0.6, size * 0.6);
+  ctx.closePath();
+
+  ctx.fillStyle = '#4CD964';
+  ctx.fill();
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 export default function HUD({ position, gameMode, score, onAnalyze }) {
   const [street, setStreet] = useState({ street: '46th St', avenue: '9th Ave' });
-  const [heading, setHeading] = useState(0);
   const [landmarks, setLandmarks] = useState([]);
   const [showMinimap, setShowMinimap] = useState(true);
+  const [tilesLoaded, setTilesLoaded] = useState(0);
   const canvasRef = useRef(null);
+  const heading = position?.heading || 0;
 
   useEffect(() => {
     if (!position || !window.gameNavigation) return;
 
     setStreet(window.gameNavigation.getCurrentStreet(position.lat, position.lng));
-    setHeading(position.heading || 0);
     setLandmarks(window.gameNavigation.getNearbyLandmarks(position.lat, position.lng, 300));
   }, [position]);
 
@@ -32,96 +89,69 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
   // Draw minimap
   const drawMinimap = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !position || !window.gameNavigation) return;
+    if (!canvas || !position) return;
 
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
     const centerX = w / 2;
     const centerY = h / 2;
-    const scale = w / 0.005;
 
     ctx.clearRect(0, 0, w, h);
-
-    // Background
-    ctx.fillStyle = '#F9FAFB';
+    ctx.fillStyle = '#E5E7EB';
     ctx.fillRect(0, 0, w, h);
 
-    // Draw street grid
-    const nav = window.gameNavigation;
-    ctx.strokeStyle = '#E5E7EB';
-    ctx.lineWidth = 1;
+    // Calculate tile position for player
+    const tilePos = latLngToTile(position.lat, position.lng, MINIMAP_ZOOM);
+    const tileX = Math.floor(tilePos.x);
+    const tileY = Math.floor(tilePos.y);
+    const fracX = tilePos.x - tileX;
+    const fracY = tilePos.y - tileY;
 
-    // East-West streets
-    nav.STREETS.eastWest.forEach((st) => {
-      const dy = (st.lat - position.lat) * scale;
-      const y = centerY - dy;
-      if (y > 0 && y < h) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
+    // Draw a 3x3 grid of tiles centered on the player
+    let pendingTiles = 0;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const tx = tileX + dx;
+        const ty = tileY + dy;
+        const tile = loadTile(tx, ty, MINIMAP_ZOOM);
 
-        ctx.fillStyle = '#9CA3AF';
-        ctx.font = '500 7px Inter, sans-serif';
-        ctx.fillText(st.name, 4, y - 2);
+        const drawX = centerX + (dx - fracX) * TILE_SIZE;
+        const drawY = centerY + (dy - fracY) * TILE_SIZE;
+
+        if (tile.ready) {
+          ctx.drawImage(tile.img, drawX, drawY, TILE_SIZE, TILE_SIZE);
+        } else {
+          pendingTiles++;
+          tile.promise.then(() => setTilesLoaded((n) => n + 1));
+        }
       }
-    });
+    }
 
-    // North-South avenues
-    nav.STREETS.northSouth.forEach((ave) => {
-      const dx = (ave.lng - position.lng) * scale;
-      const x = centerX + dx;
-      if (x > 0 && x < w) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
-      }
-    });
+    // Draw landmark dots on top of tiles
+    if (window.gameNavigation) {
+      const nav = window.gameNavigation;
+      const colors = ['#FF3B30', '#34C759', '#007AFF', '#FF9500', '#AF52DE'];
+      nav.LANDMARKS.forEach((lm, i) => {
+        const lmTile = latLngToTile(lm.lat, lm.lng, MINIMAP_ZOOM);
+        const lx = centerX + (lmTile.x - tilePos.x) * TILE_SIZE;
+        const ly = centerY + (lmTile.y - tilePos.y) * TILE_SIZE;
 
-    // Draw landmarks with colored dots
-    const colors = ['#FF3B30', '#34C759', '#007AFF', '#FF9500', '#AF52DE'];
-    nav.LANDMARKS.forEach((lm, i) => {
-      const dx = (lm.lng - position.lng) * scale;
-      const dy = (lm.lat - position.lat) * scale;
-      const x = centerX + dx;
-      const y = centerY - dy;
+        if (lx > 5 && lx < w - 5 && ly > 5 && ly < h - 5) {
+          ctx.fillStyle = colors[i % colors.length];
+          ctx.beginPath();
+          ctx.arc(lx, ly, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      });
+    }
 
-      if (x > 5 && x < w - 5 && y > 5 && y < h - 5) {
-        ctx.fillStyle = colors[i % colors.length];
-        ctx.beginPath();
-        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // White border
-        ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-      }
-    });
-
-    // Player dot (green with white border)
-    ctx.fillStyle = '#4CD964';
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Player heading indicator
-    const headingRad = -(heading * Math.PI) / 180 + Math.PI / 2;
-    ctx.strokeStyle = '#4CD964';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY);
-    ctx.lineTo(
-      centerX + Math.cos(headingRad) * 14,
-      centerY - Math.sin(headingRad) * 14
-    );
-    ctx.stroke();
-  }, [position, heading]);
+    // Draw player arrow with heading
+    drawPlayerArrow(ctx, centerX, centerY, heading);
+  }, [position, heading, tilesLoaded]);
 
   useEffect(() => {
     drawMinimap();
@@ -195,7 +225,7 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
 
       {/* Minimap — bottom right */}
       <div className={`minimap interactive ${!showMinimap ? 'hidden' : ''}`}>
-        <canvas ref={canvasRef} width={180} height={180} />
+        <canvas ref={canvasRef} width={256} height={256} />
       </div>
 
       {/* Crosshair */}

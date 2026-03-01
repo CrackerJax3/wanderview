@@ -96,16 +96,20 @@ AFRAME.registerComponent('wasd-movement', {
   init: function () {
     this.velocity = new THREE.Vector3();
     this.direction = new THREE.Vector3();
-    this.keys = { w: false, a: false, s: false, d: false, shift: false, space: false };
+    this.keys = { w: false, a: false, s: false, d: false, shift: false, space: false, q: false, e: false };
     this.headBobTime = 0;
     this.baseY = 1.6;
     this.isMoving = false;
+    this.baseFov = 75;
+    this.currentFov = 75;
 
     this.onKeyDown = this.onKeyDown.bind(this);
     this.onKeyUp = this.onKeyUp.bind(this);
+    this.onWheel = this.onWheel.bind(this);
 
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('keyup', this.onKeyUp);
+    document.addEventListener('wheel', this.onWheel, { passive: false });
   },
 
   onKeyDown: function (e) {
@@ -119,6 +123,8 @@ AFRAME.registerComponent('wasd-movement', {
       case 'd': case 'arrowright': this.keys.d = true; break;
       case 'shift': this.keys.shift = true; break;
       case ' ': this.keys.space = true; break;
+      case 'q': this.keys.q = true; break;
+      case 'e': this.keys.e = true; break;
     }
   },
 
@@ -130,12 +136,31 @@ AFRAME.registerComponent('wasd-movement', {
       case 'd': case 'arrowright': this.keys.d = false; break;
       case 'shift': this.keys.shift = false; break;
       case ' ': this.keys.space = false; break;
+      case 'q': this.keys.q = false; break;
+      case 'e': this.keys.e = false; break;
     }
+  },
+
+  onWheel: function (e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    e.preventDefault();
+    this.currentFov += e.deltaY * 0.05;
+    this.currentFov = Math.max(20, Math.min(110, this.currentFov));
+    this.el.setAttribute('camera', 'fov', this.currentFov);
   },
 
   tick: function (time, delta) {
     if (!delta) return;
     const dt = delta / 1000;
+
+    // Vertical movement (Q = down, E = up)
+    const moveY = (this.keys.e ? 1 : 0) + (this.keys.q ? -1 : 0);
+    if (moveY !== 0) {
+      let vertSpeed = this.data.speed;
+      if (this.keys.shift) vertSpeed *= this.data.sprintMultiplier;
+      this.baseY += moveY * vertSpeed * dt;
+      this.baseY = Math.max(0.5, this.baseY);
+    }
 
     // Calculate movement direction
     const moveZ = (this.keys.w ? -1 : 0) + (this.keys.s ? 1 : 0);
@@ -143,15 +168,24 @@ AFRAME.registerComponent('wasd-movement', {
 
     this.isMoving = moveZ !== 0 || moveX !== 0;
 
-    if (!this.isMoving) {
-      // Dampen head bob when stopped
-      this.headBobTime = 0;
-      return;
-    }
-
-    // Get camera heading for movement direction
+    // Always update heading for minimap/compass, even when not moving
     const cameraEl = this.el;
     const rotation = cameraEl.object3D.rotation;
+    if (window.gameEngine) {
+      const rig = this.el.parentEl;
+      if (rig) {
+        const pos = rig.object3D.position;
+        const latLng = window.gameEngine.sceneToLatLng(pos.x, pos.z);
+        const headingDeg = THREE.MathUtils.radToDeg(-rotation.y) % 360;
+        window.gameEngine.updatePosition(latLng.lat, latLng.lng, (headingDeg + 360) % 360);
+      }
+    }
+
+    if (!this.isMoving) {
+      this.headBobTime = 0;
+      this.el.object3D.position.y = this.baseY;
+      return;
+    }
 
     // Forward/backward based on camera yaw only (not pitch)
     this.direction.set(0, 0, 0);
@@ -188,17 +222,11 @@ AFRAME.registerComponent('wasd-movement', {
     this.headBobTime += dt * this.data.headBobSpeed * (this.keys.shift ? 1.3 : 1);
     const bobOffset = Math.sin(this.headBobTime) * this.data.headBobAmount;
     this.el.object3D.position.y = this.baseY + bobOffset;
-
-    // Update game engine with new position
-    if (window.gameEngine) {
-      const latLng = window.gameEngine.sceneToLatLng(pos.x, pos.z);
-      const headingDeg = THREE.MathUtils.radToDeg(-rotation.y) % 360;
-      window.gameEngine.updatePosition(latLng.lat, latLng.lng, (headingDeg + 360) % 360);
-    }
   },
 
   remove: function () {
     document.removeEventListener('keydown', this.onKeyDown);
     document.removeEventListener('keyup', this.onKeyUp);
+    document.removeEventListener('wheel', this.onWheel);
   },
 });
