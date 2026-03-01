@@ -1222,6 +1222,12 @@
   text-overflow: ellipsis;
 }
 
+.schedule-item-price {
+  font-size: 0.65rem;
+  color: var(--gray-500);
+  margin-top: 2px;
+}
+
 .schedule-item-actions {
   display: flex;
   gap: 6px;
@@ -1274,6 +1280,27 @@
   padding: 2px 8px;
   border-radius: var(--r-full);
   margin-top: 4px;
+}
+
+.schedule-totals {
+  padding: 10px 16px 8px;
+  margin: 0 0 4px;
+  border-top: 1px solid var(--gray-100);
+  background: var(--gray-50);
+  border-radius: 0 0 var(--r-md) var(--r-md);
+}
+
+.schedule-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+  color: var(--gray-600);
+}
+
+.schedule-total-row strong {
+  color: var(--navy);
+  font-weight: 700;
 }
 
 .schedule-clear {

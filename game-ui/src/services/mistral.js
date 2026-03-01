@@ -26,10 +26,10 @@ Rules:
 - Never break character. You ARE a New Yorker giving a tour.
 
 SCHEDULE FORMAT:
-When the player asks to plan their day or schedule activities, respond conversationally first, then append a JSON block wrapped in [SCHEDULE] tags. Each item needs: time, title, location, status ("confirmed" for player-specified items, "suggested" for your additions), and optionally lat/lng.
+When the player asks to plan their day or schedule activities, respond conversationally first, then append a JSON block wrapped in [SCHEDULE] tags. Each item needs: time, title, location, status ("confirmed" for player-specified items, "suggested" for your additions), pricePerPerson (e.g. "Free", "$", "$$", "$$$", "$15", "$20-30"), and optionally lat/lng.
 Example:
 [SCHEDULE]
-[{"time":"9:00 AM","title":"Visit Times Square","location":"Times Square, 42nd St","status":"confirmed","lat":40.758,"lng":-73.9855},{"time":"10:30 AM","title":"Coffee at Gotham West","location":"Gotham West Market","status":"suggested","lat":40.7635,"lng":-73.9928}]
+[{"time":"9:00 AM","title":"Visit Times Square","location":"Times Square, 42nd St","status":"confirmed","pricePerPerson":"Free","lat":40.758,"lng":-73.9855},{"time":"10:30 AM","title":"Coffee at Gotham West","location":"Gotham West Market","status":"suggested","pricePerPerson":"$","lat":40.7635,"lng":-73.9928}]
 [/SCHEDULE]`;
 
 const GAME_MODE_PROMPTS = {
@@ -79,6 +79,7 @@ export function parseScheduleFromResponse(text) {
         title: item.title || 'Untitled',
         location: item.location || '',
         status: item.status === 'confirmed' ? 'confirmed' : 'suggested',
+        pricePerPerson: item.pricePerPerson ?? item.price ?? '',
         lat: item.lat || null,
         lng: item.lng || null,
       }));
@@ -247,9 +248,9 @@ You MUST reply with exactly two parts in this order:
 1. A short conversational line (1-2 sentences) confirming the plan.
 2. A schedule block: the exact text [SCHEDULE] then a JSON array, then [/SCHEDULE].
 
-JSON array format: each object has "time" (e.g. "9:00 AM"), "title", "location", "status" ("confirmed" for user-requested items, "suggested" for your fill-in ideas), and optional "lat", "lng" (numbers). Use real NYC/Hell's Kitchen places. Fill gaps between the user's requested times with your own suggestions (status: "suggested"). Example:
+JSON array format: each object has "time" (e.g. "9:00 AM"), "title", "location", "status" ("confirmed" for user-requested items, "suggested" for your fill-in ideas), "pricePerPerson" (e.g. "Free", "$", "$$", "$$$", "$12", "$20-40"), and optional "lat", "lng" (numbers). Use real NYC/Hell's Kitchen places. Fill gaps between the user's requested times with your own suggestions (status: "suggested"). Always include pricePerPerson for each item so the user can see budget. Example:
 [SCHEDULE]
-[{"time":"9:00 AM","title":"Visit Times Square","location":"Times Square, 42nd St","status":"confirmed","lat":40.758,"lng":-73.9855},{"time":"10:30 AM","title":"Coffee at Gotham West","location":"Gotham West Market","status":"suggested","lat":40.7635,"lng":-73.9928}]
+[{"time":"9:00 AM","title":"Visit Times Square","location":"Times Square, 42nd St","status":"confirmed","pricePerPerson":"Free","lat":40.758,"lng":-73.9855},{"time":"10:30 AM","title":"Coffee at Gotham West","location":"Gotham West Market","status":"suggested","pricePerPerson":"$","lat":40.7635,"lng":-73.9928}]
 [/SCHEDULE]
 
 Always include the [SCHEDULE]...[/SCHEDULE] block when the user asks for a plan, schedule, or itinerary.`;
