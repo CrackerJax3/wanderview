@@ -111,10 +111,13 @@
   right: 20px;
   z-index: 1010;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
+
 
 .compass-ring {
   width: 64px;
@@ -206,6 +209,8 @@
   padding: 2px 10px;
   border-radius: var(--r-full);
   box-shadow: var(--shadow-xs);
+  width: 100%;
+  text-align: center;
 }
 
 /* ─── Mission Panel — top right, below compass ─── */
@@ -795,15 +800,15 @@
 
 /* ─── Analyzer Button ─── */
 .analyzer-btn {
-  display: block;
-  width: 100%;
-  padding: 8px 16px;
-  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
   background: var(--white);
   border: 1px solid var(--gray-200);
   border-radius: var(--r-full);
   color: var(--navy);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
@@ -812,6 +817,7 @@
   text-transform: uppercase;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-sm);
+  white-space: nowrap;
 }
 
 .analyzer-btn:hover {

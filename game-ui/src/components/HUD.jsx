@@ -149,6 +149,9 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
 
       {/* Compass — top right (reference-style with red/navy needle) */}
       <div className="compass-wrapper">
+        <button className="analyzer-btn interactive" onClick={onAnalyze}>
+          Analyzer
+        </button>
         <div className="compass-ring">
           <span className="compass-n">N</span>
           <span className="compass-e">E</span>
@@ -164,9 +167,6 @@ export default function HUD({ position, gameMode, score, onAnalyze }) {
           </div>
         </div>
         <div className="compass-heading">{compassDirection} {Math.round(heading)}°</div>
-        <button className="analyzer-btn interactive" onClick={onAnalyze}>
-          Analyzer
-        </button>
       </div>
 
       {/* Location Info — bottom left (with colored distance badges) */}
