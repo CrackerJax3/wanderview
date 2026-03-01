@@ -234,10 +234,10 @@ export default function StreetViewOverlay({ position, active }) {
     const lng = position.lng;
     const locKey = `${lat?.toFixed(4)},${lng?.toFixed(4)}`;
 
-    if (document.pointerLockElement) document.exitPointerLock();
-
     const s = stateRef.current;
     const isFirstLoad = !locKeyRef.current;
+
+    if (isFirstLoad && document.pointerLockElement) document.exitPointerLock();
     s.currentLat = lat;
     s.currentLng = lng;
 
