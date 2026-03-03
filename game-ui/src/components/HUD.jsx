@@ -262,7 +262,7 @@ export default function HUD({ position, gameMode, score, onAnalyze, schedule = [
     }
 
     // Draw player arrow with heading (offset northwest to align with tile position)
-    drawPlayerArrow(ctx, centerX - 6, centerY - 6, heading);
+    drawPlayerArrow(ctx, centerX, centerY, heading);
 
     ctx.restore();
   }, [position, tilesLoaded, scheduleRoute]);

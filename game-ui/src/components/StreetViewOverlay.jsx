@@ -13,7 +13,7 @@ const MOVE_COOLDOWN_MS = 400;
 const DRIFT_SPEED = 40;
 const DRIFT_MAX = 35;
 const CAMERA_FOV = 60;
-const SNAP_RADIUS = 50;
+const SNAP_RADIUS = 0;
 
 function buildPanorama(lat, lng, apiKey) {
   return new Promise((resolve) => {
@@ -73,6 +73,19 @@ async function snapToStreet(lat, lng, apiKey) {
   return null;
 }
 
+async function hasStreetViewCoverage(lat, lng, apiKey) {
+  try {
+    const res = await fetch(
+      `${SV_META}?location=${lat},${lng}&source=outdoor&radius=0&key=${apiKey}`
+    );
+    const data = await res.json();
+    return data.status === 'OK';
+  } catch (e) {
+    console.warn('[StreetView] Coverage check failed:', e.message);
+    return false;
+  }
+}
+
 export default function StreetViewOverlay({ position, active }) {
   const containerRef = useRef(null);
   const stateRef = useRef({
@@ -95,6 +108,7 @@ export default function StreetViewOverlay({ position, active }) {
   const locKeyRef = useRef('');
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [noCoverage, setNoCoverage] = useState(false);
 
   const getApiKey = useCallback(() => {
     return window.WANDERVIEW_GOOGLE_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY || '';
@@ -132,14 +146,16 @@ export default function StreetViewOverlay({ position, active }) {
     setLoading(true);
 
     try {
-      const snapped = await snapToStreet(lat, lng, apiKey);
-      if (!snapped) {
+      const ok = await hasStreetViewCoverage(lat, lng, apiKey);
+      if (!ok) {
+        setNoCoverage(true);
         s.loading = false;
         setLoading(false);
         return;
       }
-      const useLat = snapped.lat;
-      const useLng = snapped.lng;
+      setNoCoverage(false);
+      const useLat = lat;
+      const useLng = lng;
 
       const panoCanvas = await buildPanorama(useLat.toFixed(5), useLng.toFixed(5), apiKey);
       const THREE = window.THREE;
@@ -230,7 +246,7 @@ export default function StreetViewOverlay({ position, active }) {
 
       const clampedLat = Math.max(-85, Math.min(85, s.lat));
       const phi = THREE.MathUtils.degToRad(90 - clampedLat);
-      const theta = THREE.MathUtils.degToRad(s.lon);
+      const theta = THREE.MathUtils.degToRad(90 - s.lon);
       const lookX = s.driftX + 500 * Math.sin(phi) * Math.cos(theta);
       const lookY = 500 * Math.cos(phi);
       const lookZ = s.driftZ + 500 * Math.sin(phi) * Math.sin(theta);
@@ -294,6 +310,8 @@ export default function StreetViewOverlay({ position, active }) {
       s.keys = { w: false, a: false, s: false, d: false };
     }
 
+    setNoCoverage(false);
+
     if (locKey === locKeyRef.current) {
       startRenderLoop();
       setReady(true);
@@ -304,16 +322,20 @@ export default function StreetViewOverlay({ position, active }) {
     let cancelled = false;
     (async () => {
       try {
-        const snapped = await snapToStreet(lat, lng, apiKey);
-        const useLat = snapped ? snapped.lat : lat;
-        const useLng = snapped ? snapped.lng : lng;
-        if (snapped) {
-          s.currentLat = useLat;
-          s.currentLng = useLng;
-          locKeyRef.current = `${useLat.toFixed(4)},${useLng.toFixed(4)}`;
-        }
+        const ok = await hasStreetViewCoverage(lat, lng, apiKey);
+        if (cancelled) return;
 
-        const panoCanvas = await buildPanorama(useLat.toFixed(5), useLng.toFixed(5), apiKey);
+        if (!ok) {
+          setNoCoverage(true);
+          startRenderLoop();
+          setReady(true);
+          return;
+        }
+        setNoCoverage(false);
+
+        s.currentLat = lat;
+        s.currentLng = lng;
+        const panoCanvas = await buildPanorama(lat.toFixed(5), lng.toFixed(5), apiKey);
         if (cancelled) return;
 
         const THREE = window.THREE;
@@ -353,6 +375,11 @@ export default function StreetViewOverlay({ position, active }) {
       if (document.pointerLockElement !== s.renderer.domElement) return;
       s.lon += e.movementX * 0.1;
       s.lat -= e.movementY * 0.1;
+
+      const heading = ((s.lon % 360) + 360) % 360;
+      if (window.gameEngine) {
+        window.gameEngine.updatePosition(s.currentLat, s.currentLng, heading);
+      }
     };
 
     const onKeyDown = (e) => {
@@ -412,7 +439,7 @@ export default function StreetViewOverlay({ position, active }) {
   return (
     <div ref={containerRef} className={`streetview-overlay ${ready ? 'visible' : ''}`}>
       <div className="streetview-badge">
-        Street View {loading ? '— loading...' : '— click to look, WASD to move'}
+        Street View {loading ? '— loading...' : (noCoverage ? '— no coverage here' : '— click to look, WASD to move')}
       </div>
     </div>
   );
