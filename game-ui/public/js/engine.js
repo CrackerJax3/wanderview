@@ -78,6 +78,31 @@
   // Keyboard shortcuts (safe to register on document immediately)
   document.addEventListener('keydown', function (e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    if (e.altKey && window.gameEngine && typeof window.gameEngine.nudgeGeoOffsetMeters === 'function') {
+      var step = e.shiftKey ? 5 : 1;
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        window.gameEngine.nudgeGeoOffsetMeters(0, step);
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        window.gameEngine.nudgeGeoOffsetMeters(0, -step);
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        window.gameEngine.nudgeGeoOffsetMeters(-step, 0);
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        window.gameEngine.nudgeGeoOffsetMeters(step, 0);
+        return;
+      }
+    }
+
     if (e.key === 'm' || e.key === 'M') {
       window.dispatchEvent(new CustomEvent('toggleMinimap'));
     }

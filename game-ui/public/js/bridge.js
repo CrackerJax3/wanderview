@@ -16,12 +16,42 @@
   // Scale factor: 3D scene units to meters
   const SCALE = 1.0;
 
+  const GEO_OFFSET_STORAGE_KEY = 'wanderview_geo_offset_v1';
+  let geoOffset = { lat: 0, lng: 0 };
+  try {
+    const raw = localStorage.getItem(GEO_OFFSET_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed?.lat === 'number' && typeof parsed?.lng === 'number') {
+        geoOffset = { lat: parsed.lat, lng: parsed.lng };
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
   let currentPosition = { lat: ORIGIN_LAT, lng: ORIGIN_LNG, heading: 0 };
   let positionCallbacks = [];
   let missionCallbacks = [];
 
+  function persistGeoOffset() {
+    try {
+      localStorage.setItem(GEO_OFFSET_STORAGE_KEY, JSON.stringify(geoOffset));
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  function notifyPosition() {
+    positionCallbacks.forEach(function (cb) {
+      try { cb({ ...currentPosition }); } catch (e) { console.error('Position callback error:', e); }
+    });
+  }
+
   // Convert lat/lng to scene position (meters from origin)
   function latLngToScene(lat, lng) {
+    lat = lat - geoOffset.lat;
+    lng = lng - geoOffset.lng;
     const x = (lng - ORIGIN_LNG) * METERS_PER_DEG_LNG * SCALE;
     const z = -(lat - ORIGIN_LAT) * METERS_PER_DEG_LAT * SCALE;
     return { x, z };
@@ -31,7 +61,7 @@
   function sceneToLatLng(x, z) {
     const lng = ORIGIN_LNG + x / (METERS_PER_DEG_LNG * SCALE);
     const lat = ORIGIN_LAT - z / (METERS_PER_DEG_LAT * SCALE);
-    return { lat, lng };
+    return { lat: lat + geoOffset.lat, lng: lng + geoOffset.lng };
   }
 
   window.gameEngine = {
@@ -45,6 +75,32 @@
     // Coordinate conversions
     latLngToScene,
     sceneToLatLng,
+
+    // Geo calibration offset
+    getGeoOffset: function () {
+      return { ...geoOffset };
+    },
+    setGeoOffset: function (latOffset, lngOffset) {
+      const next = {
+        lat: typeof latOffset === 'number' ? latOffset : 0,
+        lng: typeof lngOffset === 'number' ? lngOffset : 0,
+      };
+      const dLat = next.lat - geoOffset.lat;
+      const dLng = next.lng - geoOffset.lng;
+      geoOffset = next;
+      persistGeoOffset();
+
+      currentPosition = { ...currentPosition, lat: currentPosition.lat + dLat, lng: currentPosition.lng + dLng };
+      window.dispatchEvent(new CustomEvent('geoOffsetChange', { detail: { offset: { ...geoOffset } } }));
+      notifyPosition();
+    },
+    nudgeGeoOffsetMeters: function (eastMeters, northMeters) {
+      eastMeters = typeof eastMeters === 'number' ? eastMeters : 0;
+      northMeters = typeof northMeters === 'number' ? northMeters : 0;
+      const dLat = northMeters / METERS_PER_DEG_LAT;
+      const dLng = eastMeters / METERS_PER_DEG_LNG;
+      this.setGeoOffset(geoOffset.lat + dLat, geoOffset.lng + dLng);
+    },
 
     // Get current player position as lat/lng/heading
     getPosition: function () {
@@ -63,9 +119,7 @@
     const headingDelta = Math.abs(heading - prev.heading);
     const headingWrap = Math.min(headingDelta, 360 - headingDelta);
     if (dist > 0.5 || headingWrap > 0.01) {
-      positionCallbacks.forEach(function (cb) {
-        try { cb(currentPosition); } catch (e) { console.error('Position callback error:', e); }
-      });
+      notifyPosition();
     }
     },
 
